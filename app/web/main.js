@@ -29,7 +29,8 @@ const state = { goal: 0, route: [], stats: null, spe: null, safe: "pending", spe
 
 const canvas = $("map"), ctx = canvas.getContext("2d");
 let k = 1, sx = 1, sy = 1;
-let bgCache, hatchCache, geoCache, geoEdges, envCanvas, envPath, layerCanvas, forbidMask;
+let bgCache, hatchCache, geoCache, geoEdges, envCanvas, envPath, envNote, layerCanvas, forbidMask, forbidCells, forbidPath;
+const MIN_FORBID_CELLS = 4;
 const unitMasks = new Map(), ranges = {};
 const idx = ([r, c]) => r * cols + c;
 const weights = () => Object.fromEntries(WEIGHTS.map((w) => [w, Number($(`w-${w}`).value)]));
@@ -49,7 +50,7 @@ function pattern(spec, kk) {
 }
 function hatchPattern() {
   const T = Math.round(6 * k), c = mk(T, T), x = c.getContext("2d");
-  x.strokeStyle = tok("--red"); x.lineWidth = 1.5 * k; x.beginPath();
+  x.strokeStyle = tok("--red"); x.lineWidth = Math.max(2, 2 * k); x.beginPath();
   for (const o of [-T, 0, T]) { x.moveTo(o, T); x.lineTo(o + T, 0); }
   x.stroke();
   return x.createPattern(c, "repeat");
@@ -63,6 +64,20 @@ function edges(a) {
     if (r + 1 < rows && a[i] !== a[i + cols]) { const y = Math.round((r + 1) * sy); p.moveTo(Math.round(c * sx), y); p.lineTo(Math.round((c + 1) * sx), y); }
   }
   return p;
+}
+
+function forbidVisual(e) {
+  const out = new Uint8Array(e.length), seen = new Uint8Array(e.length);
+  for (let s = 0; s < e.length; s++) {
+    if (e[s] !== Infinity || seen[s]) continue;
+    const reg = [s]; seen[s] = 1;
+    for (let n = 0; n < reg.length; n++) {
+      const i = reg[n], r = (i / cols) | 0, c = i % cols;
+      for (const j of [c > 0 ? i - 1 : -1, c + 1 < cols ? i + 1 : -1, r > 0 ? i - cols : -1, r + 1 < rows ? i + cols : -1]) if (j >= 0 && e[j] === Infinity && !seen[j]) { seen[j] = 1; reg.push(j); }
+    }
+    if (reg.length >= MIN_FORBID_CELLS) for (const i of reg) out[i] = 1;
+  }
+  return out;
 }
 
 function sign(id, cx, cy, size) {
@@ -93,7 +108,20 @@ function updateEnv() {
   for (let i = 0; i < envMask.length; i++) if (!envMask[i]) id.data.set([r, g, b, a], i * 4);
   envCanvas ??= mk(cols, rows);
   envCanvas.getContext("2d").putImageData(id, 0, 0);
-  envPath = edges(envMask.map((v, i) => v || returnEnergy[i] === Infinity ? 1 : 0));
+  const inside = envMask.map((v, i) => v || returnEnergy[i] === Infinity ? 1 : 0);
+  envPath = edges(inside);
+  const bx = Math.round(cols * 0.15), by = Math.round(rows * 0.15), hug = { left: [], right: [], top: [], bottom: [] };
+  let inner = 0;
+  for (let i = 0; i < inside.length; i++) {
+    const c = i % cols, r = (i / cols) | 0;
+    if (!((c + 1 < cols && inside[i] !== inside[i + 1]) || (r + 1 < rows && inside[i] !== inside[i + cols]))) continue;
+    if (c < bx) hug.left.push([r, c]); else if (c >= cols - bx) hug.right.push([r, c]); else if (r < by) hug.top.push([r, c]); else if (r >= rows - by) hug.bottom.push([r, c]); else inner++;
+  }
+  const side = Object.keys(hug).sort((a, b) => hug[b].length - hug[a].length)[0], e = hug[side];
+  envNote = inner >= 60 ? null : !e.length ? { side: "none" } : (() => {
+    const horiz = side === "left" || side === "right", along = e.map((p) => p[horiz ? 0 : 1]).sort((a, b) => a - b)[e.length >> 1], depth = e.map((p) => p[horiz ? 1 : 0]);
+    return { side, along, depth: side === "left" || side === "top" ? Math.max(...depth) : Math.min(...depth) };
+  })();
 }
 
 function recompute() {
@@ -105,7 +133,7 @@ function recompute() {
   if (!state.moved) $("elapsed").value = state.route.length ? Math.min($("elapsed").max, Math.ceil(state.tl.tArr / 300) * 5) : 0;
   renderOutputs(); clearSpe(); updateEnv(); renderPanels(); draw();
 }
-function setGoal(i) { state.goal = i; state.moved = false; $("reset-goal").disabled = i === cheyava; recompute(); }
+function setGoal(i) { state.goal = i; state.moved = false; $("reset-goal").hidden = i === cheyava; recompute(); }
 
 function simulateSpe() {
   if (state.spe) { clearSpe(); draw(); return; }
@@ -300,7 +328,7 @@ function rebuildStatic() {
   hx.drawImage(forbidMask, 0, 0, W, H); hx.globalCompositeOperation = "source-in"; hx.fillStyle = tok("--wash-forbid"); hx.fillRect(0, 0, W, H);
   lx.fillStyle = hatchPattern(); lx.fillRect(0, 0, W, H); lx.globalCompositeOperation = "destination-in"; lx.drawImage(forbidMask, 0, 0, W, H);
   hx.globalCompositeOperation = "source-over"; hx.drawImage(l, 0, 0);
-  geoCache = null;
+  geoCache = null; forbidPath = edges(forbidCells);
   updateEnv();
 }
 function resize() {
@@ -343,6 +371,7 @@ function draw() {
   ctx.stroke();
   ctx.drawImage(envCanvas, 0, 0, W, H); ctx.drawImage(hatchCache, 0, 0);
   ctx.lineCap = "square"; ctx.lineJoin = "miter";
+  ctx.save(); if (Math.round(k) % 2) ctx.translate(0.5, 0.5); ctx.strokeStyle = tok("--red"); ctx.lineWidth = Math.max(1, Math.round(k)); ctx.stroke(forbidPath); ctx.restore();
   ctx.strokeStyle = ground; ctx.lineWidth = 5.5 * k; ctx.stroke(envPath);
   ctx.strokeStyle = tok("--green"); ctx.lineWidth = 2.5 * k; ctx.stroke(envPath);
 
@@ -357,8 +386,8 @@ function draw() {
   const dot = (x, y, r, c) => { ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fillStyle = c; ctx.fill(); };
   const mark = (text, x, y) => {
     ctx.font = font(600, FS);
-    const flip = x + 11 + ctx.measureText(text).width > Wc - 4;
-    labels.push({ text, x: flip ? x - 11 : x + 11, y, a: flip ? "right" : "left", w: 600, s: FS });
+    const flip = x + 16 + ctx.measureText(text).width + 8 > Wc - 4;
+    labels.push({ text, x: flip ? x - 16 : x + 16, y, a: flip ? "right" : "left", s: FS });
   };
   ctx.lineJoin = "round";
   if ($("show-traverse").checked && trav.length > 1) { ctx.lineCap = "butt"; ctx.globalAlpha = 0.6; trace(trav, ink, 1, [4, 4]); ctx.globalAlpha = 1; }
@@ -372,26 +401,48 @@ function draw() {
     const [x, y] = P(state.goal);
     dot(x, y, 10, ground); dot(x, y, 8, blue); dot(x, y, 2, surface);
     if (state.safe === "forbidden") { ctx.beginPath(); ctx.arc(x, y, 11, 0, TAU); ctx.strokeStyle = tok("--red"); ctx.lineWidth = 2; ctx.stroke(); }
-    mark(t(onGoal ? "label.eva_dest" : state.goal === cheyava ? "label.cheyava" : "label.dest"), x, y);
+    mark(t(state.goal === cheyava ? "label.cheyava_dest" : "label.dest"), x, y);
   }
   if (eva && !onGoal) { const [x, y] = P(astronautCell()); dot(x, y, 8.75, ground); dot(x, y, 7.25, ink); dot(x, y, 4.75, surface); mark(t("label.eva"), x, y); }
   if (state.spe && state.spe.refuge !== habitat) { const [x, y0] = P(state.spe.refuge), y = state.spe.kind === "here" ? y0 - 20 : y0; box(x, y, 22, ground); sign("s-refuge", x, y, 18); mark(t("label.refuge"), x, y); }
-  if (key === "geo_unit") for (const u of geoInfo) if (u.n >= 150) { const [x, y] = P(u.cell); labels.push({ text: u.symbol, x, y, a: "center", w: 600, s: 12 }); }
-  for (const [v, c] of grat.lon) if (Math.round(v * 100) % 2 === 0 && c * sx / k > 24 && c * sx / k < Wc - 24) labels.push({ text: t("grat.lon", { v: num(v, 2) }), x: c * sx / k, y: 14, a: "center", w: 400, s: FS });
-  for (const [v, r] of grat.lat) if (Math.round(v * 100) % 2 === 0 && r * sy / k > 24 && r * sy / k < Hc - 60) labels.push({ text: t("grat.lat", { v: num(v, 2) }), x: 6, y: r * sy / k, a: "left", w: 400, s: FS });
-  ctx.textBaseline = "middle"; ctx.lineJoin = "round"; ctx.setLineDash([]);
-  for (const l of labels) {
-    ctx.font = font(l.w, l.s); ctx.textAlign = l.a; ctx.lineWidth = 3.5; ctx.strokeStyle = tok("--halo"); ctx.strokeText(l.text, l.x, l.y);
-    ctx.fillStyle = ink; ctx.fillText(l.text, l.x, l.y);
+  if (key === "geo_unit") for (const u of geoInfo) if (u.n >= 150) { const [x, y] = P(u.cell); labels.push({ text: u.symbol, x, y, a: "center", s: 12 }); }
+  const sb = scaleBox(Hc, ink, ground, font, Wc < 600), placed = [sb];
+  const hair = 1 / k, snap = (v) => Math.round(v * k) / k, PADX = 4;
+  ctx.textBaseline = "middle"; ctx.setLineDash([]);
+  const plate = (l, optional) => {
+    ctx.font = font(600, l.s);
+    const tw = ctx.measureText(l.text).width, ar = l.arrow, ex = ar === "left" || ar === "right" ? 14 : 0, ey = ar === "up" || ar === "down" ? 12 : 0;
+    const w = snap(tw + 2 * PADX + ex), h = snap(Math.round(l.s * 1.5) + ey);
+    const x = snap(l.a === "left" ? l.x - PADX - (ar === "left" ? ex : 0) : l.a === "right" ? l.x - w + PADX + (ar === "right" ? ex : 0) : l.x - w / 2), y = snap(l.y - h / 2), r = { x, y, w, h };
+    if (optional && placed.some((p) => r.x < p.x + p.w && r.x + r.w > p.x && r.y < p.y + p.h && r.y + r.h > p.y)) return null;
+    placed.push(r);
+    ctx.fillStyle = l.fill ?? ground; ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = ink; ctx.lineWidth = hair; ctx.strokeRect(x + hair / 2, y + hair / 2, w - hair, h - hair);
+    const cx = x + (ar === "left" ? ex : 0) + (w - ex) / 2, cy = y + (ar === "up" ? ey : 0) + (h - ey) / 2;
+    ctx.fillStyle = l.color ?? ink; ctx.textAlign = "center"; ctx.fillText(l.text, cx, cy);
+    if (ar) {
+      const [mx, my] = { left: [x + 4, y + h / 2], right: [x + w - 4, y + h / 2], up: [x + w / 2, y + 3], down: [x + w / 2, y + h - 3] }[ar], d = { left: [1, 0], right: [-1, 0], up: [0, 1], down: [0, -1] }[ar];
+      ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(mx + d[0] * 8 - d[1] * 4, my + d[1] * 8 + d[0] * 4); ctx.lineTo(mx + d[0] * 8 + d[1] * 4, my + d[1] * 8 - d[0] * 4); ctx.closePath(); ctx.fill();
+    }
+    return r;
+  };
+  for (const l of labels) plate(l);
+  if (envNote) {
+    const n = envNote, green = tok("--green"), on = tok("--on-color"), cw = sx / k, ch = sy / k, text = t(n.side === "none" ? "label.env_none" : "label.env");
+    const base = { text, s: FS, fill: green, color: on }, at = { none: { a: "right", x: Wc - 12, y: 40 }, left: { a: "left", x: (n.depth + 3) * cw + 8, y: (n.along + 0.5) * ch, arrow: "left" },
+      right: { a: "right", x: (n.depth - 3) * cw - 8, y: (n.along + 0.5) * ch, arrow: "right" }, top: { a: "center", x: (n.along + 0.5) * cw, y: (n.depth + 3) * ch + 16, arrow: "up" }, bottom: { a: "center", x: (n.along + 0.5) * cw, y: (n.depth - 3) * ch - 16, arrow: "down" } }[n.side];
+    for (let i = 0; i < 8 && !plate({ ...base, ...at, y: Math.min(Hc - 30, Math.max(30, at.y)) + ((i + 1) >> 1) * (i % 2 ? -28 : 28) }, true); i++);
   }
-  scaleBox(Hc, ink, ground, font);
+  const gs = Wc < 600 ? 4 : 2;
+  for (const [v, c] of grat.lon) if (Math.round(v * 100) % gs === 0 && c * sx / k > 24 && c * sx / k < Wc - 24) plate({ text: t("grat.lon", { v: num(v, 2) }), x: c * sx / k, y: 16, a: "center", s: FS }, true);
+  for (const [v, r] of grat.lat) if (Math.round(v * 100) % gs === 0 && r * sy / k > 30 && r * sy / k < Hc - 30) plate({ text: t("grat.lat", { v: num(v, 2) }), x: 10, y: r * sy / k, a: "left", s: FS }, true);
 }
 
-function scaleBox(Hc, ink, ground, font) {
+function scaleBox(Hc, ink, ground, font, compact) {
   const cw = sx / k, L = [25, 50, 100].find((n) => n * cw >= 90) ?? 100, bar = L * cw, pad = 6, hair = 1 / k, snap = (v) => Math.round(v * k) / k;
   ctx.font = font(400, 12);
-  const end = `${L * 20} m`, w = Math.max(bar + ctx.measureText(end).width / 2, ctx.measureText(t("scale.cell")).width);
-  const bw = pad * 2 + w + 22, bh = pad * 2 + 6 + 4 + 14 + 16, x0 = 12, y0 = snap(Hc - 12 - bh), bx = x0 + pad, by = y0 + pad;
+  const end = `${L * 20} m`, w = Math.max(bar + ctx.measureText(end).width / 2, compact ? 0 : ctx.measureText(t("scale.cell")).width);
+  const bw = pad * 2 + w + (compact ? 18 : 22), bh = pad * 2 + 6 + 4 + 14 + (compact ? 0 : 16), x0 = 12, y0 = snap(Hc - 12 - bh), bx = x0 + pad, by = y0 + pad;
   ctx.fillStyle = ground; ctx.fillRect(x0, y0, bw, bh);
   ctx.strokeStyle = ink; ctx.lineWidth = hair; ctx.strokeRect(x0 + hair / 2, y0 + hair / 2, bw - hair, bh - hair);
   for (let s = 0; s < L / 5; s++) { ctx.fillStyle = s % 2 ? ground : ink; ctx.fillRect(bx + s * 5 * cw, by, 5 * cw, 6); }
@@ -403,10 +454,11 @@ function scaleBox(Hc, ink, ground, font) {
   const ly = by + 10 + 8;
   ctx.fillText("0", bx, ly); ctx.fillText(end, bx + bar, ly);
   if (5 * cw >= 30) ctx.fillText("100", bx + 5 * cw, ly);
-  ctx.textAlign = "left"; ctx.fillText(t("scale.cell"), bx, ly + 16);
-  const ax = x0 + bw - pad - 6;
-  ctx.beginPath(); ctx.moveTo(ax, by); ctx.lineTo(ax + 4, by + 12); ctx.lineTo(ax - 4, by + 12); ctx.closePath(); ctx.fill();
-  ctx.font = font(700, 12); ctx.textAlign = "center"; ctx.fillText(t("scale.north"), ax, by + 22);
+  if (!compact) { ctx.textAlign = "left"; ctx.fillText(t("scale.cell"), bx, ly + 16); }
+  const ax = x0 + bw - pad - 6, ah = compact ? 8 : 12;
+  ctx.beginPath(); ctx.moveTo(ax, by); ctx.lineTo(ax + 4, by + ah); ctx.lineTo(ax - 4, by + ah); ctx.closePath(); ctx.fill();
+  ctx.font = font(700, 12); ctx.textAlign = "center"; ctx.fillText(t("scale.north"), ax, by + ah + 10);
+  return { x: x0, y: y0, w: bw, h: bh };
 }
 
 const controls = () => document.querySelectorAll(".side-col input, .side-col button, .map-strip input, .map-strip select, #reset-goal");
@@ -444,8 +496,9 @@ async function boot() {
   const walkable = (e) => e !== Infinity;
   traversePct = traverse.length ? (100 * traverse.filter((rc) => walkable(energy[idx(rc)])).length) / traverse.length : NaN;
   basePct = (100 * energy.filter(walkable).length) / energy.length;
+  forbidCells = forbidVisual(energy);
   forbidMask = mk(cols, rows);
-  { const id = new ImageData(cols, rows); for (let i = 0; i < energy.length; i++) if (energy[i] === Infinity) id.data[i * 4 + 3] = 255; forbidMask.getContext("2d").putImageData(id, 0, 0); }
+  { const id = new ImageData(cols, rows); for (let i = 0; i < forbidCells.length; i++) if (forbidCells[i]) id.data[i * 4 + 3] = 255; forbidMask.getContext("2d").putImageData(id, 0, 0); }
   if (layers.geo_unit && geounits) {
     const acc = new Map(), g = layers.geo_unit;
     for (let i = 0; i < g.length; i++) if (g[i]) { const a = acc.get(g[i]) ?? { n: 0, r: 0, c: 0, d: Infinity }; a.n++; a.r += (i / cols) | 0; a.c += i % cols; acc.set(g[i], a); }
@@ -481,12 +534,13 @@ async function boot() {
 
   ready = true;
   for (const c of controls()) c.disabled = false;
-  $("reset-goal").disabled = true; $("status").hidden = true;
+  $("reset-goal").hidden = true; $("status").hidden = true;
   buildLayer();
   let rz; new ResizeObserver(() => { clearTimeout(rz); rz = setTimeout(resize, 100); }).observe(canvas);
   resize();
   recompute();
   renderAll();
+  { const sc = document.querySelector(".map-scroll"), mid = ((habitat % cols) + (cheyava % cols)) / 2 / cols; sc.scrollLeft = Math.max(0, sc.scrollWidth * mid - sc.clientWidth / 2); }
   document.querySelector("main").setAttribute("aria-busy", "false");
 }
 boot().catch((e) => { console.error(e); showCoreError(e.file ?? e.message); });

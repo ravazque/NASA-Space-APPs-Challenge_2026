@@ -19,7 +19,7 @@ function dest({ data: { science: sci, pov }, t, date, pick }) {
       const p = photos[n], pano = p.file.startsWith("pano"), img = new Image();
       img.alt = pick(p, "caption"); img.src = `data/pov/${p.file}`;
       view.className = `viewer${pano ? "" : " fit"}`; view.replaceChildren(img);
-      if (pano) img.onload = () => { view.scrollLeft = first && keep != null ? keep : view.scrollWidth * 0.55 - view.clientWidth / 2; };
+      if (pano) img.onload = () => { view.scrollLeft = first && keep != null ? keep : view.scrollWidth * 0.66 - view.clientWidth / 2; };
       view.setAttribute("aria-labelledby", `tab-${n}`);
       const src = /^https?:/.test(p.source_url ?? "") ? ` · <a href="${esc(p.source_url)}">${esc(t("pov.source"))}</a>` : "";
       cap.innerHTML = `<p>${esc(pick(p, "caption"))}</p><p class="caption">${esc(t("pov.meta", { instrument: p.instrument, sol: p.sol, date: date(p.date_utc) }))}<br>${esc(t("pov.credit", { credit: p.credit }))}${src}${pano ? `<br>${esc(t("pov.drag"))}` : ""}</p>`;

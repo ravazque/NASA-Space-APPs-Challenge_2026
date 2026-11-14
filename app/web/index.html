@@ -40,14 +40,14 @@
     <div class="col">
     <section class="map-col" aria-labelledby="map-t">
       <h2 id="map-t" class="sr" data-i18n="map.region">Mapa de la EVA, cráter Jezero</h2>
-      <div class="map-frame">
+      <div class="map-scroll"><div class="map-frame">
         <canvas id="map" tabindex="0" role="application" data-i18n-aria="map.canvas" aria-label="Mapa de Jezero con la ruta desde Three Forks. Flechas: mueve el destino 20 m; Mayús y flechas: 200 m."></canvas>
         <p id="status" class="status" data-i18n="map.loading">Cargando datos de Jezero…</p>
         <section id="map-error" class="z535 map-error" data-tone="danger" role="alert" aria-labelledby="err-t" hidden>
           <h2 class="band" id="err-t"><svg class="glyph" aria-hidden="true"><use href="#g-prohibit"/></svg><span data-i18n="err.title">Error de datos</span></h2>
           <div class="body"><p id="err-body" class="detail"></p></div>
         </section>
-      </div>
+      </div></div>
 
       <div class="map-strip">
         <div class="strip-a">
@@ -70,7 +70,7 @@
 
         <ul class="legend" aria-label="Leyenda" data-i18n-aria="legend.title">
           <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><path d="M0 6H24" style="stroke:var(--ground)" stroke-width="7"/><path d="M0 6H24" style="stroke:var(--blue)" stroke-width="4"/></svg><span data-lg="route">Ruta a seguir</span></li>
-          <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><rect width="24" height="12" style="fill:var(--ground);fill-opacity:.4"/><path d="M-2 12L10 0M5 12L17 0M12 12L24 0M19 12L31 0" style="stroke:var(--red)" stroke-width="1.5"/></svg><span data-lg="forbidden">Prohibido: pendiente &gt; 18°</span></li>
+          <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><rect width="24" height="12" style="fill:var(--ground);fill-opacity:.4"/><path d="M-2 12L10 0M5 12L17 0M12 12L24 0M19 12L31 0" style="stroke:var(--red)" stroke-width="2"/><rect x=".5" y=".5" width="23" height="11" fill="none" style="stroke:var(--red)"/></svg><span data-lg="forbidden">Prohibido: pendiente &gt; 18°</span></li>
           <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><path d="M0 6H24" style="stroke:var(--ground)" stroke-width="5.5"/><path d="M0 6H24" style="stroke:var(--green)" stroke-width="2.5"/></svg><span data-lg="envelope">Límite de vuelta segura</span></li>
           <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><rect width="24" height="12" style="fill:var(--ground);fill-opacity:.62"/></svg><span data-lg="outside">Sin energía para volver</span></li>
           <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><rect x="8" y="2" width="8" height="8" style="fill:var(--ink);stroke:var(--ground)" stroke-width="1"/></svg><span data-lg="start">Three Forks · inicio</span></li>
@@ -83,8 +83,8 @@
 
         <div class="strip-c">
           <p id="hint" class="hint">Clic en el mapa: nuevo destino · Flechas: 20 m · Mayús + flechas: 200 m</p>
-          <button type="button" id="reset-goal" class="text-btn" data-i18n="map.reset" disabled>Volver a Cheyava Falls</button>
           <a href="#destino" id="why" class="text-btn" data-i18n="map.why">Por qué Cheyava Falls</a>
+          <button type="button" id="reset-goal" class="text-btn" data-i18n="map.reset" hidden>Volver a Cheyava Falls</button>
         </div>
       </div>
     </section>
