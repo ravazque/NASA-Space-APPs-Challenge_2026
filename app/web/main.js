@@ -26,7 +26,7 @@ const [grid, cfg, traverse, spe, bg] = await Promise.all([
   loadJson("data/donki_sep_2024-05.json").catch(() => []),
   loadImage("data/ctx_aoi.png").catch(() => null),
 ]).catch((err) => {
-  document.body.textContent = `No se pudieron cargar los datos (${err.message}). Ejecuta pipeline/fetch_data.py y build_grid.py.`;
+  $("status").textContent = `No se pudieron cargar los datos (${err.message}). Ver README.`;
   throw err;
 });
 
@@ -40,7 +40,13 @@ const returnEnergy = dijkstra(energy, rows, cols, habitat).dist;
 const sortedSvf = Float32Array.from(layers.svf).sort();
 const refugeSvf = sortedSvf[Math.floor(sortedSvf.length * REFUGE_SVF_PERCENTILE)];
 
-const state = { goal: idx(sites.cheyava_falls.cell), route: [], spe: null };
+const css = getComputedStyle(document.documentElement);
+const tok = (n) => css.getPropertyValue(n).trim();
+const rgb = (n) => { const h = tok(n).slice(1); return [0, 2, 4].map((o) => parseInt(h.slice(o, o + 2), 16)); };
+const LAYER_RGB = rgb("--layer"), DANGER_RGB = rgb("--danger");
+const fmt = (n, d = 1) => n.toLocaleString("es", { minimumFractionDigits: d, maximumFractionDigits: d });
+
+const state = { goal: idx(sites.cheyava_falls.cell), route: [], spe: null, safe: "ok" };
 
 const canvas = $("map");
 canvas.width = bg ? bg.width : cols * 4;
@@ -49,7 +55,7 @@ const ctx = canvas.getContext("2d");
 const sx = canvas.width / cols, sy = canvas.height / rows;
 const layerCanvas = new OffscreenCanvas(cols, rows);
 const lctx = layerCanvas.getContext("2d");
-$("source").textContent = `· ${source}`;
+$("source").textContent = source;
 
 const weights = () => Object.fromEntries(WEIGHTS.map((w) => [w, Number($(`w-${w}`).value)]));
 const walkMinutes = (meters) => meters / cfg.walk_speed_ms / 60;
@@ -59,22 +65,32 @@ function validation() {
   return traverse.length ? (100 * ok) / traverse.length : NaN;
 }
 
+const clearSpe = () => { state.spe = null; $("spe-info").textContent = ""; };
+
 function recomputeRoute() {
+  clearSpe();
   const t0 = performance.now();
   state.route = shortestPath(planningGrid(energy, layers, weights()), rows, cols, habitat, state.goal);
-  $("r-ms").textContent = `${(performance.now() - t0).toFixed(0)} ms`;
+  $("r-ms").textContent = `${fmt(performance.now() - t0, 0)} ms`;
   const { lengthM, energyJ } = pathStats(state.route, energy, cols, cellM);
+  const forbidden = energy[state.goal] === Infinity;
   $("r-dist").textContent = state.route.length
-    ? `${(lengthM / 1000).toFixed(2)} km · ${walkMinutes(lengthM).toFixed(0)} min`
-    : "sin ruta";
-  $("r-energy").textContent = `${(energyJ / 1e6).toFixed(2)} MJ`;
+    ? `${fmt(lengthM / 1000, 2)}\u00a0km · ${fmt(walkMinutes(lengthM), 0)}\u00a0min`
+    : forbidden ? "Sin ruta · pendiente > 18°" : "Sin ruta · inalcanzable";
+  $("r-energy").textContent = state.route.length
+    ? `${fmt((100 * energyJ) / cfg.eva_energy_budget_j, 0)}\u00a0% batería · ${fmt(energyJ / 1e6, 2)}\u00a0MJ`
+    : "—";
+  state.safe = !state.route.length ? (forbidden ? "forbidden" : "unreachable")
+    : (cfg.eva_energy_budget_j - energyJ) * (1 - cfg.return_margin) >= returnEnergy[state.goal] ? "ok" : "no";
 }
 
-function astronautCell() {
-  if (!state.route.length) return habitat;
+function setGoal(i) { state.goal = i; recomputeRoute(); draw(); }
+
+function astronautIdx() {
   const f = $("elapsed").value / 100;
-  return state.route[Math.min(state.route.length - 1, Math.floor(f * state.route.length))];
+  return Math.min(state.route.length - 1, Math.floor(f * state.route.length));
 }
+const astronautCell = () => (state.route.length ? state.route[astronautIdx()] : habitat);
 
 function simulateSpe() {
   const from = astronautCell();
@@ -85,7 +101,13 @@ function simulateSpe() {
   for (let i = best; i !== -1; i = prev[i]) path.push(i);
   state.spe = { path: path.reverse(), refuge: best };
   const ev = spe.find((e) => e.instruments?.some((i) => i.displayName.includes(">100 MeV"))) ?? spe[0];
-  $("spe-info").textContent = `${ev ? `Evento SEP real (DONKI) ${ev.sepID}. ` : ""}Refugio ${best === habitat ? "(hábitat)" : `SVF ${layers.svf[best].toFixed(2)}`} a ${walkMinutes(pathStats(path, energy, cols, cellM).lengthM).toFixed(0)} min.`;
+  const date = ev ? new Date(ev.eventTime).toLocaleDateString("es", { day: "numeric", month: "short", year: "numeric" }) : "";
+  const sky = `cubre ${Math.round((1 - layers.svf[best]) * 100)} % del cielo`;
+  const min = fmt(walkMinutes(pathStats(path, energy, cols, cellM).lengthM), 0);
+  const msg = from === habitat ? "Estás en el hábitat: ya a cubierto. Avanza la EVA para simular la alerta en ruta."
+    : best === from ? `Ya estás en el abrigo más cercano (${sky}).`
+    : `Refugio: ${best === habitat ? "hábitat" : `abrigo topográfico (${sky}, relativo)`} a ${min} min.`;
+  $("spe-info").textContent = `${ev ? `Alerta solar simulada · evento SEP real (NASA DONKI, ${date}, medido cerca de la Tierra). ` : ""}${msg}`;
   draw();
 }
 
@@ -93,63 +115,96 @@ function cellCenter(i) {
   return [((i % cols) + 0.5) * sx, (Math.floor(i / cols) + 0.5) * sy];
 }
 
-function strokePath(cells, color, width, dash = []) {
+function strokePath(cells, color, width, dash, k) {
   if (cells.length < 2) return;
-  ctx.beginPath(); ctx.setLineDash(dash); ctx.strokeStyle = color; ctx.lineWidth = width;
-  cells.forEach((i, n) => (n ? ctx.lineTo(...cellCenter(i)) : ctx.moveTo(...cellCenter(i))));
-  ctx.stroke(); ctx.setLineDash([]);
+  const trace = (c, w, d) => {
+    ctx.beginPath(); ctx.setLineDash(d.map((x) => x * k)); ctx.strokeStyle = c; ctx.lineWidth = w * k;
+    cells.forEach((i, n) => (n ? ctx.lineTo(...cellCenter(i)) : ctx.moveTo(...cellCenter(i))));
+    ctx.stroke(); ctx.setLineDash([]);
+  };
+  if (width >= 3) trace(tok("--halo"), width + 2, []);
+  trace(color, width, dash);
 }
 
-function marker(i, color, label) {
+function marker(i, color, label, k) {
   const [x, y] = cellCenter(i);
-  ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, 6, 0, 2 * Math.PI); ctx.fill();
-  ctx.font = "12px system-ui"; ctx.fillStyle = "#fff"; ctx.fillText(label, x + 9, y + 4);
+  ctx.beginPath(); ctx.arc(x, y, 6 * k, 0, 2 * Math.PI);
+  ctx.fillStyle = color; ctx.fill();
+  ctx.lineWidth = 2 * k; ctx.strokeStyle = tok("--halo"); ctx.stroke();
+  ctx.font = `600 ${Math.round(parseFloat(tok("--fs-canvas")) * k)}px system-ui`; const flip = x + 9 * k + ctx.measureText(label).width > canvas.width - 4 * k;
+  const lx = flip ? x - 9 * k : x + 9 * k; ctx.textAlign = flip ? "right" : "left";
+  ctx.lineWidth = 3 * k; ctx.lineJoin = "round"; ctx.strokeStyle = tok("--halo"); ctx.strokeText(label, lx, y + 4 * k);
+  ctx.fillStyle = tok("--text"); ctx.fillText(label, lx, y + 4 * k);
 }
 
 function draw() {
+  const w = canvas.clientWidth, k = w ? Math.max(1, canvas.width / w) : 1;
   const key = $("layer").value;
-  const layer = layers[key];
+  const layer = layers[key] ?? layers.slope_deg;
   let min = Infinity, max = -Infinity;
   for (const v of layer) { if (v < min) min = v; if (v > max) max = v; }
-  const remaining = cfg.eva_energy_budget_j * (1 - $("elapsed").value / 100);
-  const mask = walkbackMask(returnEnergy, remaining, cfg.return_margin);
+  const walkedJ = state.route.length ? pathStats(state.route.slice(0, astronautIdx() + 1), energy, cols, cellM).energyJ : 0;
+  const remainingJ = cfg.eva_energy_budget_j - walkedJ;
+  const mask = walkbackMask(returnEnergy, remainingJ, cfg.return_margin);
+  const limitJ = remainingJ * (1 - cfg.return_margin) || 1;
   const img = lctx.createImageData(cols, rows);
   const show = key !== "none";
   for (let i = 0; i < layer.length; i++) {
     const g = (layer[i] - min) / (max - min || 1);
     const p = i * 4;
-    img.data[p] = 34; img.data[p + 1] = 211; img.data[p + 2] = 238; img.data[p + 3] = show ? 20 + 180 * g : 0;
-    if (!mask[i]) { img.data[p] = img.data[p + 1] = img.data[p + 2] = 0; img.data[p + 3] = 170; }
-    if (energy[i] === Infinity) { img.data[p] = 255; img.data[p + 1] = 0; img.data[p + 2] = 0; img.data[p + 3] = 200; }
+    img.data.set(LAYER_RGB, p); img.data[p + 3] = show ? 20 + 180 * g : 0;
+    const soft = Math.max(0, returnEnergy[i] / limitJ - 0.5) * 2;
+    if (!mask[i] || soft > 0) { img.data[p] = img.data[p + 1] = img.data[p + 2] = 0; img.data[p + 3] = mask[i] ? 110 * soft : 170; }
+    if (energy[i] === Infinity) { img.data.set(DANGER_RGB, p); img.data[p + 3] = 200; }
   }
   lctx.putImageData(img, 0, 0);
+  $("layer-scale").textContent = show ? `${fmt(min, 1)}–${fmt(max, 1)} ${$("layer").selectedOptions[0].dataset.unit}`.trim() : "";
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (bg) ctx.drawImage(bg, 0, 0);
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(layerCanvas, 0, 0, canvas.width, canvas.height);
-  if ($("show-traverse").checked) strokePath(traverse.map(idx), "rgba(255,255,255,.7)", 1.5, [4, 3]);
-  strokePath(state.route, "#ff7a3d", 3);
-  if (state.spe) strokePath(state.spe.path, "#facc15", 3, [6, 4]);
-  marker(habitat, "#4ade80", "Three Forks · hábitat");
-  marker(state.goal, "#ff7a3d", state.goal === idx(sites.cheyava_falls.cell) ? "Cheyava Falls" : "destino");
-  if (Number($("elapsed").value) > 0) marker(astronautCell(), "#60a5fa", "EVA");
+  if ($("show-traverse").checked) strokePath(traverse.map(idx), tok("--traverse"), 1.5, [4, 3], k);
+  strokePath(state.route, tok("--accent"), 3, [], k);
+  if (state.spe) {
+    strokePath(state.spe.path, tok("--warn"), 3, [6, 4], k);
+    if (state.spe.refuge !== habitat) marker(state.spe.refuge, tok("--warn"), "Refugio", k);
+  }
+  marker(habitat, tok("--safe"), "Three Forks · hábitat", k);
+  const eva = Number($("elapsed").value) > 0 && astronautCell() !== habitat;
+  const onGoal = eva && astronautCell() === state.goal;
+  if (state.goal !== habitat) marker(state.goal, tok("--accent"), onGoal ? "EVA · destino" : state.goal === idx(sites.cheyava_falls.cell) ? "Cheyava Falls" : "destino", k);
+  if (eva && !onGoal) marker(astronautCell(), tok("--info"), "EVA", k);
 
-  $("elapsed-out").textContent = `${$("elapsed").value}%`;
-  $("r-reserve").textContent = mask[state.goal] ? "OK" : "FUERA";
-  $("r-reserve").dataset.state = mask[state.goal] ? "ok" : "bad";
+  $("elapsed-out").textContent = `${$("elapsed").value} %`;
+  const safe = { ok: ["Sí", "ok"], no: ["No · falta energía", "bad"], forbidden: ["Prohibido", "bad"], unreachable: ["Sin ruta", "bad"] }[state.safe];
+  $("r-reserve").textContent = safe[0];
+  $("r-reserve").dataset.state = safe[1];
 }
 
 canvas.addEventListener("click", (e) => {
   const rect = canvas.getBoundingClientRect();
-  const c = Math.floor(((e.clientX - rect.left) / rect.width) * cols);
-  const r = Math.floor(((e.clientY - rect.top) / rect.height) * rows);
-  state.goal = r * cols + c; state.spe = null;
-  recomputeRoute(); draw();
+  const c = Math.min(cols - 1, Math.max(0, Math.floor(((e.clientX - rect.left) / rect.width) * cols)));
+  const r = Math.min(rows - 1, Math.max(0, Math.floor(((e.clientY - rect.top) / rect.height) * rows)));
+  setGoal(r * cols + c);
 });
-for (const w of WEIGHTS) $(`w-${w}`).addEventListener("input", () => { recomputeRoute(); draw(); });
+canvas.addEventListener("keydown", (e) => {
+  const d = { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0] }[e.key];
+  if (!d) return;
+  const n = e.shiftKey ? 10 : 1;
+  const r = Math.min(rows - 1, Math.max(0, Math.floor(state.goal / cols) + d[0] * n));
+  const c = Math.min(cols - 1, Math.max(0, (state.goal % cols) + d[1] * n));
+  setGoal(r * cols + c);
+  e.preventDefault();
+});
+for (const b of document.querySelectorAll("[data-goal]")) b.addEventListener("click", () => setGoal(idx(sites[b.dataset.goal].cell)));
+for (const w of WEIGHTS) {
+  const show = () => { $(`w-${w}-out`).textContent = fmt(Number($(`w-${w}`).value), 1); };
+  $(`w-${w}`).addEventListener("input", () => { show(); recomputeRoute(); draw(); });
+  show();
+}
 for (const id of ["layer", "show-traverse"]) $(id).addEventListener("change", draw);
-$("elapsed").addEventListener("input", () => { state.spe = null; draw(); });
+$("elapsed").addEventListener("input", () => { clearSpe(); draw(); });
 $("spe").addEventListener("click", simulateSpe);
 
 for (const btn of document.querySelectorAll("nav button")) {
@@ -159,6 +214,9 @@ for (const btn of document.querySelectorAll("nav button")) {
   });
 }
 
-$("r-valid").textContent = `${validation().toFixed(1)} %`;
+const base = (100 * energy.filter((e) => e !== Infinity).length) / energy.length;
+$("r-valid").innerHTML = `${fmt(validation(), 1)} %<small>media AOI ${fmt(base, 1)} %</small>`;
+new ResizeObserver(() => draw()).observe(canvas);
 recomputeRoute();
 draw();
+$("status").hidden = true;
