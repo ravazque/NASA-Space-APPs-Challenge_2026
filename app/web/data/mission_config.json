@@ -1,0 +1,15 @@
+{
+  "_note": "ALL VALUES ARE NOMINAL ASSUMPTIONS — calibrate with real suit data before trusting them.",
+  "gravity_ratio": 0.38,
+  "astronaut_mass_kg": 80,
+  "load_kg": 50,
+  "walk_speed_ms": 0.8,
+  "max_slope_deg": 18,
+  "eva_energy_budget_j": 8600000,
+  "return_margin": 0.2,
+  "terrain_factor": {
+    "bedrock": 1.1,
+    "loose_sand": 2.1
+  },
+  "_habitat": "Three Forks — set from grid meta.sites"
+}

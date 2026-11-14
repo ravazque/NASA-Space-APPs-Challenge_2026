@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ARIADNE</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="mode-console">
+  <header>
+    <h1>ARIADNE <small id="source"></small></h1>
+    <nav aria-label="Modo de interfaz">
+      <button data-mode="console" aria-pressed="true">Consola</button>
+      <button data-mode="wrist">Muñeca</button>
+      <button data-mode="hud">HUD</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="map" aria-label="Mapa del AOI, cráter Jezero">
+      <canvas id="map"></canvas>
+      <p class="hint">Click para fijar destino · rojo = prohibido (pendiente) · oscuro = fuera de la envolvente de retorno · blanco discontinuo = recorrido real de Perseverance</p>
+    </section>
+
+    <aside class="panel" aria-label="Controles">
+      <label>Capa
+        <select id="layer">
+          <option value="slope_deg">Pendiente (HiRISE DTM)</option>
+          <option value="elevation_m">Elevación (HiRISE DTM)</option>
+          <option value="thermal_inertia_si">Inercia térmica (THEMIS)</option>
+          <option value="science">Valor científico (CRISM)</option>
+          <option value="svf">Exposición al cielo / radiación (SVF)</option>
+          <option value="viewshed">Comunicaciones con hábitat</option>
+          <option value="confidence">Confianza</option>
+          <option value="none">Ninguna (solo CTX)</option>
+        </select>
+      </label>
+      <label class="inline"><input type="checkbox" id="show-traverse" checked> Recorrido Perseverance</label>
+      <fieldset>
+        <legend>Pesos de ruta</legend>
+        <label>Energía <input type="range" id="w-energy" min="0" max="5" step="0.1" value="1"></label>
+        <label>Riesgo terreno <input type="range" id="w-risk" min="0" max="5" step="0.1" value="1"></label>
+        <label>Sin comms <input type="range" id="w-comms" min="0" max="5" step="0.1" value="0.5"></label>
+        <label>Radiación <input type="range" id="w-radiation" min="0" max="5" step="0.1" value="0.5"></label>
+        <label>Ciencia <input type="range" id="w-science" min="0" max="5" step="0.1" value="1"></label>
+      </fieldset>
+      <label>Progreso EVA / energía consumida <output id="elapsed-out">0%</output>
+        <input type="range" id="elapsed" min="0" max="100" value="0">
+      </label>
+      <button id="spe" class="alert">Simular alerta solar (SPE)</button>
+      <p id="spe-info" class="hint" aria-live="assertive"></p>
+    </aside>
+
+    <section class="readout" aria-live="polite">
+      <div><span>Ruta</span><strong id="r-dist">—</strong></div>
+      <div><span>Energía ruta</span><strong id="r-energy">—</strong></div>
+      <div><span>Retorno seguro</span><strong id="r-reserve">—</strong></div>
+      <div><span>Validación M20</span><strong id="r-valid">—</strong></div>
+      <div><span>Cálculo</span><strong id="r-ms">—</strong></div>
+    </section>
+  </main>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
