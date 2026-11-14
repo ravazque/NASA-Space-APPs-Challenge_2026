@@ -116,13 +116,15 @@ select:disabled { color: var(--ink-3); cursor: not-allowed; }
 .side-col .body { padding-block: var(--s2); }
 .value { display: block; font: 600 var(--t-xl)/1.05 var(--font); min-width: 6ch; }
 .detail { font-size: var(--t-sm); color: var(--ink-2); margin-top: var(--s1); }
+.side-col .detail { min-height: 3lh; }
 #safe .value { font-size: var(--t-2xl); font-weight: 700; min-height: 3.25rem; line-height: 1.05; }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); }
 .pair .value { min-height: 2rem; }
 
 .slider { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr) 2.75rem; align-items: center; gap: var(--s3); min-height: var(--row); }
 .slider label { font-size: var(--t-sm); }
-.slider output { text-align: right; font-weight: 600; font-size: var(--t-sm); }
+.slider output { white-space: nowrap; text-align: right; font-weight: 600; font-size: var(--t-sm); }
+.eva .slider { grid-template-columns: 9.5rem minmax(0, 1fr) 5.5rem; }
 .eva { border-top: var(--hair) solid var(--ink); padding-top: var(--s1); }
 .eva .hint { flex: none; font-size: var(--t-xs); }
 fieldset.prio { border: 0; border-top: var(--hair) solid var(--ink); padding: var(--s2) 0 0; min-width: 0; }
@@ -202,6 +204,7 @@ input[type=range]:disabled { cursor: not-allowed; opacity: .4; }
   .viewer { height: 12.5rem; }
   .pair .value { font-size: var(--t-lg); }
   .slider { grid-template-columns: 7rem minmax(0, 1fr) 2.75rem; }
+  .eva .slider { grid-template-columns: 7rem minmax(0, 1fr) 5.5rem; }
   .credits { padding-inline: var(--s4); }
 }
 @media (max-width: 599px) { .descriptor { display: none; } }

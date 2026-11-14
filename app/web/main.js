@@ -81,7 +81,7 @@ function sign(id, cx, cy, size) {
 }
 
 const walkMin = (m) => m / cfg.walk_speed_ms / 60;
-const duration = (min) => { const m = Math.round(min); return m < 60 ? t("dur.m", { m }) : t("dur.hm", { h: Math.floor(m / 60), m: m % 60 }); };
+const duration = (min) => { const m = Math.round(min); return m < 60 ? t("dur.m", { m }) : m % 60 === 0 ? t("dur.h", { h: m / 60 }) : t("dur.hm", { h: Math.floor(m / 60), m: m % 60 }); };
 const astronautCell = () => state.at.cell;
 const evaS = () => $("elapsed").value * 60;
 
@@ -170,7 +170,8 @@ function renderSpe() {
   b.setAttribute("aria-pressed", String(!!s));
   $("spe-label").textContent = t(s ? "spe.button_active" : "spe.button");
   $("spe-panel").hidden = !s;
-  for (const li of document.querySelectorAll("[data-only=spe]")) li.hidden = !s;
+  for (const li of document.querySelectorAll("[data-only=spe]")) li.hidden = !(s?.path.length > 1);
+  for (const li of document.querySelectorAll("[data-only=refuge]")) li.hidden = !(s && s.refuge !== habitat);
   if (!s) return box.replaceChildren();
   const line = (cls, text) => { if (!text) return null; const p = document.createElement("p"); p.className = cls; p.textContent = text; return p; };
   const act = { home: "spe.at_home", here: "spe.here", go_home: "spe.go_home", shelter: "spe.go_shelter" }[s.kind];
@@ -361,7 +362,6 @@ function draw() {
   if (state.route.length > 1) { trace(state.route, ground, 7, []); trace(state.route, blue, 4, []); }
   if (state.spe?.path.length > 1) { ctx.lineCap = "butt"; trace(state.spe.path, ink, 6, []); trace(state.spe.path, tok("--yellow"), 4, [8, 6]); }
   if (key === "viewshed" && meta.relay) { const [x, y] = P(idx(meta.relay.cell)); box(x, y, 18, ground); sign("s-relay", x, y, 16); mark(t("label.relay"), x, y); }
-  if (state.spe && state.spe.refuge !== habitat && state.spe.path.length) { const [x, y] = P(state.spe.refuge); box(x, y, 22, ground); sign("s-refuge", x, y, 18); mark(t("label.refuge"), x, y); }
   { const [x, y] = P(habitat); box(x, y, 18, ground); box(x, y, 14, ink); box(x, y, 4, ground); mark(t("label.start"), x, y); }
   const eva = Number($("elapsed").value) > 0 && astronautCell() !== habitat, onGoal = eva && astronautCell() === state.goal;
   if (state.goal !== habitat) {
@@ -371,6 +371,7 @@ function draw() {
     mark(t(onGoal ? "label.eva_dest" : state.goal === cheyava ? "label.cheyava" : "label.dest"), x, y);
   }
   if (eva && !onGoal) { const [x, y] = P(astronautCell()); dot(x, y, 8.75, ground); dot(x, y, 7.25, ink); dot(x, y, 4.75, surface); mark(t("label.eva"), x, y); }
+  if (state.spe && state.spe.refuge !== habitat) { const [x, y0] = P(state.spe.refuge), y = state.spe.kind === "here" ? y0 - 20 : y0; box(x, y, 22, ground); sign("s-refuge", x, y, 18); mark(t("label.refuge"), x, y); }
   if (key === "geo_unit") for (const u of geoInfo) if (u.n >= 150) { const [x, y] = P(u.cell); labels.push({ text: u.symbol, x, y, a: "center", w: 600, s: 12 }); }
   for (const [v, c] of grat.lon) if (Math.round(v * 100) % 2 === 0 && c * sx / k > 24 && c * sx / k < Wc - 24) labels.push({ text: t("grat.lon", { v: num(v, 2) }), x: c * sx / k, y: 14, a: "center", w: 400, s: FS });
   for (const [v, r] of grat.lat) if (Math.round(v * 100) % 2 === 0 && r * sy / k > 24 && r * sy / k < Hc - 60) labels.push({ text: t("grat.lat", { v: num(v, 2) }), x: 6, y: r * sy / k, a: "left", w: 400, s: FS });
