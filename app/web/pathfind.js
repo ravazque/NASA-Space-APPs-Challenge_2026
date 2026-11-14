@@ -109,3 +109,27 @@ export function walkbackMask(returnEnergy, remainingJ, margin) {
   for (let i = 0; i < out.length; i++) out[i] = returnEnergy[i] <= limit ? 1 : 0;
   return out;
 }
+
+export function evaTimeline(route, energy, cols, cellM, cfg) {
+  const cumM = [0], cumJ = [0];
+  for (let n = 1; n < route.length; n++) {
+    const s = pathStats([route[n - 1], route[n]], energy, cols, cellM);
+    cumM.push(cumM[n - 1] + s.lengthM); cumJ.push(cumJ[n - 1] + s.energyJ);
+  }
+  const v = cfg.walk_speed_ms, lengthM = cumM.at(-1) ?? 0;
+  return { cumM, cumJ, lengthM, v, tArr: lengthM / v, eOut: cumJ.at(-1) ?? 0, rate: cfg.eva_energy_budget_j / (cfg.eva_duration_h * 3600) };
+}
+
+export function stateAt(t, tl, route, habitat = -1) {
+  if (!route.length) return { cell: habitat, spent: tl.rate * t };
+  const d = t >= tl.tArr ? tl.lengthM : tl.v * t;
+  let i = 0; while (i < route.length - 1 && tl.cumM[i + 1] <= d) i++;
+  const seg = i < route.length - 1 ? (d - tl.cumM[i]) / (tl.cumM[i + 1] - tl.cumM[i]) : 0;
+  const walkJ = tl.cumJ[i] + seg * ((tl.cumJ[i + 1] ?? tl.cumJ[i]) - tl.cumJ[i]);
+  return { cell: route[i], spent: walkJ + Math.max(0, t - tl.tArr) * tl.rate };
+}
+
+export function turnaround(tl, returnJ, cfg) {
+  const siteS = ((cfg.eva_energy_budget_j - tl.eOut) - returnJ / (1 - cfg.return_margin)) / tl.rate;
+  return { siteS, turnS: tl.tArr + siteS };
+}

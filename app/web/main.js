@@ -1,4 +1,4 @@
-import { energyGrid, planningGrid, dijkstra, shortestPath, walkbackMask, pathStats } from "./pathfind.js";
+import { energyGrid, planningGrid, dijkstra, shortestPath, walkbackMask, pathStats, evaTimeline, stateAt, turnaround } from "./pathfind.js";
 import { t, num, date, pick, apply, setLang, getLang, has } from "./i18n.js";
 
 const $ = (id) => document.getElementById(id);
@@ -25,7 +25,7 @@ const loadImage = (src) => new Promise((ok, no) => { const i = new Image(); i.on
 let rows, cols, cellM, meta, layers, cfg, traverse, donki, meda, science, pov, validation, geounits, credits, bg;
 let energy, returnEnergy, planLayers, refugeSvf, habitat, cheyava, trav = [], geoInfo = [], traversePct = NaN, basePct = NaN;
 let ready = false, coreErr = null;
-const state = { goal: 0, route: [], stats: null, spe: null, safe: "pending", spent: 0 };
+const state = { goal: 0, route: [], stats: null, spe: null, safe: "pending", spent: 0, tl: null, turn: null, at: { cell: 0, spent: 0 }, moved: false };
 
 const canvas = $("map"), ctx = canvas.getContext("2d");
 let k = 1, sx = 1, sy = 1;
@@ -82,20 +82,12 @@ function sign(id, cx, cy, size) {
 
 const walkMin = (m) => m / cfg.walk_speed_ms / 60;
 const duration = (min) => { const m = Math.round(min); return m < 60 ? t("dur.m", { m }) : t("dur.hm", { h: Math.floor(m / 60), m: m % 60 }); };
-function astronautIdx() {
-  const f = $("elapsed").value / 100;
-  return Math.min(state.route.length - 1, Math.floor(f * state.route.length));
-}
-const astronautCell = () => (state.route.length ? state.route[astronautIdx()] : habitat);
-
-function spent() {
-  const part = state.route.length ? pathStats(state.route.slice(0, astronautIdx() + 1), energy, cols, cellM) : { lengthM: 0, energyJ: 0 };
-  const B = cfg.eva_energy_budget_j, rate = B / (cfg.eva_duration_h * 3600), idle = Math.max(0, ($("elapsed").value / 100) * cfg.eva_duration_h * 3600 - part.lengthM / cfg.walk_speed_ms);
-  return part.energyJ + idle * rate;
-}
+const astronautCell = () => state.at.cell;
+const evaS = () => $("elapsed").value * 60;
 
 function updateEnv() {
-  state.spent = spent();
+  state.at = state.tl ? stateAt(evaS(), state.tl, state.route, habitat) : { cell: habitat, spent: 0 };
+  state.spent = state.at.spent;
   const envMask = walkbackMask(returnEnergy, cfg.eva_energy_budget_j - state.spent, cfg.return_margin);
   const [r, g, b, a] = wash("--wash-outside"), id = new ImageData(cols, rows);
   for (let i = 0; i < envMask.length; i++) if (!envMask[i]) id.data.set([r, g, b, a], i * 4);
@@ -107,9 +99,11 @@ function updateEnv() {
 function recompute() {
   state.route = shortestPath(planningGrid(energy, planLayers, weights()), rows, cols, habitat, state.goal);
   state.stats = state.route.length ? pathStats(state.route, energy, cols, cellM) : null;
-  state.safe = !state.route.length ? (energy[state.goal] === Infinity ? "forbidden" : "unreachable")
-    : (cfg.eva_energy_budget_j - state.stats.energyJ) * (1 - cfg.return_margin) >= returnEnergy[state.goal] ? "ok" : "no";
-  clearSpe(); updateEnv(); renderPanels(); draw();
+  state.tl = evaTimeline(state.route, energy, cols, cellM, cfg);
+  state.turn = turnaround(state.tl, returnEnergy[state.goal], cfg);
+  state.safe = !state.route.length ? (energy[state.goal] === Infinity ? "forbidden" : "unreachable") : state.turn.siteS >= 0 ? "ok" : "no";
+  if (!state.moved) $("elapsed").value = state.route.length ? Math.min($("elapsed").max, Math.ceil(state.tl.tArr / 300) * 5) : 0;
+  renderOutputs(); clearSpe(); updateEnv(); renderPanels(); draw();
 }
 function setGoal(i) { state.goal = i; $("reset-goal").disabled = i === cheyava; recompute(); }
 
@@ -131,18 +125,19 @@ const setUse = (svg, id) => { const u = svg.tagName === "use" ? svg : svg.queryS
 
 function renderPanels() {
   const st = state.stats, p = $("safe"), B = cfg?.eva_energy_budget_j, here = astronautCell();
-  const liveOk = !cfg || (B - state.spent) * (1 - cfg.return_margin) >= returnEnergy[here];
-  const s = state.safe === "ok" && !liveOk ? "no" : state.safe;
+  const live = !cfg || !state.turn || (evaS() <= state.turn.turnS && (B - state.spent) * (1 - cfg.return_margin) >= returnEnergy[here]);
+  const s = state.safe === "ok" && !live ? "no" : state.safe;
   p.dataset.tone = { ok: "safe", pending: "pending" }[s] ?? "danger";
   const [glyph, sym] = s === "ok" ? ["g-return", "s-return"] : s === "pending" ? [null, null] : ["g-prohibit", "s-forbidden"];
   setUse($("safe-t").querySelector("svg"), glyph); setUse(p.querySelector(".symbol svg"), sym);
   $("safe-title").textContent = t(`safe.title.${s}`);
   let value = "—", detail = "", rv = "—", rd = "", ev = "—", ed = "";
   if (cfg && (s === "ok" || s === "no")) {
-    const E = st.energyJ;
     value = t(s === "ok" ? "safe.value.yes" : "safe.value.no");
-    detail = t("safe.detail.ok", { left: num(Math.max(0, (100 * (B - E)) / B), 0), need: num((100 * returnEnergy[state.goal]) / (B * (1 - cfg.return_margin)), 0), margin: num(cfg.return_margin * 100, 0) })
-      + " " + t("safe.detail.live", { left: num(Math.max(0, (100 * (B - state.spent)) / B), 0), need: num((100 * returnEnergy[here]) / (B * (1 - cfg.return_margin)), 0) });
+    const dest = state.goal === cheyava ? t("label.cheyava") : t("dest.the"), mins = (sec) => Math.floor(sec / 60);
+    detail = state.safe === "no" ? t("safe.detail.short", { arr: duration(state.tl.tArr / 60), margin: num(cfg.return_margin * 100, 0) })
+      : s === "no" ? t("safe.detail.late")
+      : t("safe.detail.ok", { arr: duration(state.tl.tArr / 60), site: duration(mins(state.turn.siteS)), dest, back: duration(mins(state.turn.turnS)) });
     rv = t("route.value", { km: num(st.lengthM / 1000, 2) });
     rd = t("route.detail", { dur: duration(walkMin(st.lengthM)), speed: num(cfg.walk_speed_ms, 1) });
     ev = t("energy.value", { pct: num(Math.min(100, (100 * state.spent) / B), 0) });
@@ -156,7 +151,8 @@ function renderPanels() {
 
 function renderOutputs() {
   for (const w of WEIGHTS) $(`w-${w}-out`).textContent = num($(`w-${w}`).value, 1);
-  $("elapsed-out").textContent = t("eva.value", { pct: num($("elapsed").value, 0) });
+  $("elapsed-out").textContent = duration($("elapsed").value);
+  $("elapsed").setAttribute("aria-valuetext", duration($("elapsed").value));
 }
 
 function donkiLine() {
@@ -471,7 +467,8 @@ async function boot() {
   $("reset-goal").addEventListener("click", () => setGoal(cheyava));
   let pending = 0;
   for (const w of WEIGHTS) $(`w-${w}`).addEventListener("input", () => { renderOutputs(); pending ||= requestAnimationFrame(() => { pending = 0; recompute(); }); });
-  $("elapsed").addEventListener("input", () => { renderOutputs(); clearSpe(); updateEnv(); renderPanels(); draw(); });
+  $("elapsed").max = cfg.eva_duration_h * 60;
+  $("elapsed").addEventListener("input", () => { state.moved = true; renderOutputs(); clearSpe(); updateEnv(); renderPanels(); draw(); });
   $("layer").addEventListener("change", () => { buildLayer(); renderLayerLegend(); draw(); });
   $("show-traverse").addEventListener("change", () => { renderLegend(); draw(); });
   $("spe").addEventListener("click", simulateSpe);
