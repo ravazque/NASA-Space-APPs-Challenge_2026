@@ -1,0 +1,58 @@
+[
+ {
+  "file": "pano_bright_angel.webp",
+  "role": "destination-pano",
+  "sol": 1178,
+  "date_utc": "2024-06-12",
+  "instrument": "Mastcam-Z (346 frames, enhanced colour)",
+  "credit": "NASA/JPL-Caltech/ASU/MSSS",
+  "source_url": "https://photojournal.jpl.nasa.gov/catalog/PIA26369",
+  "lon": 77.30386018,
+  "lat": 18.4960031,
+  "caption_es": "Panorámica de 360° de Bright Angel, color realzado, sol 1178. Cheyava Falls queda algo a la derecha del centro, a unos 110 m.",
+  "caption_en": "360° panorama of Bright Angel, enhanced colour, sol 1178. Cheyava Falls is slightly right of centre, about 110 m away.",
+  "title": "Perseverance Captures 'Bright Angel' in 360 Degrees"
+ },
+ {
+  "file": "cheyava_workspace.webp",
+  "role": "destination-rock",
+  "sol": 1217,
+  "date_utc": "2024-07-23",
+  "instrument": "Mastcam-Z",
+  "credit": "NASA/JPL-Caltech/ASU/MSSS",
+  "source_url": "https://photojournal.jpl.nasa.gov/catalog/PIA26401",
+  "lon": 77.30519089,
+  "lat": 18.49748444,
+  "caption_es": "Zona de trabajo de Cheyava Falls, sol 1217: orificio de perforación (izquierda) y parche de abrasión de Steamboat Mountain.",
+  "caption_en": "Cheyava Falls workspace, sol 1217: drill hole (left) and the Steamboat Mountain abrasion patch.",
+  "title": "Mastcam-Z Views the 'Cheyava Falls' Workspace"
+ },
+ {
+  "file": "leopard_spots_drill.webp",
+  "role": "science",
+  "sol": 1215,
+  "date_utc": "2024-07-21",
+  "instrument": "Mastcam-Z",
+  "credit": "NASA/JPL-Caltech/ASU/MSSS",
+  "source_url": "https://photojournal.jpl.nasa.gov/catalog/PIA26370",
+  "lon": 77.30519089,
+  "lat": 18.49748444,
+  "caption_es": "Manchas de leopardo en la broca, sol 1215: biofirma potencial (no confirmada).",
+  "caption_en": "Leopard spots in the drill bit, sol 1215: potential biosignature (unconfirmed).",
+  "title": "Mastcam-Z Views 'Leopard Spots' in Perseverance's Drill Bit"
+ },
+ {
+  "file": "leopard_spots_watson.webp",
+  "role": "science",
+  "sol": 1212,
+  "date_utc": "2024-07-18",
+  "instrument": "WATSON (SHERLOC)",
+  "credit": "NASA/JPL-Caltech/MSSS",
+  "source_url": "https://photojournal.jpl.nasa.gov/catalog/PIA26368",
+  "lon": 77.30519089,
+  "lat": 18.49748444,
+  "caption_es": "Cheyava Falls visto por WATSON, sol 1212: vetas de sulfato de calcio y manchas con halo oscuro.",
+  "caption_en": "Cheyava Falls seen by WATSON, sol 1212: calcium sulfate veins and dark-rimmed spots.",
+  "title": "Perseverance Finds a Rock With 'Leopard Spots'"
+ }
+]

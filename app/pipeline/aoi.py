@@ -36,6 +36,7 @@ def lonlat_to_cell(lon: float, lat: float) -> tuple[int, int]:
 
 
 SITES = {
-    "three_forks": {"name": "Three Forks (depósito de muestras)", "sol": 632, "lon": 77.40126, "lat": 18.45133},
-    "cheyava_falls": {"name": "Cheyava Falls (Bright Angel)", "sol": 1210, "lon": 77.30519, "lat": 18.49748},
+    "three_forks": {"name": "Three Forks (depósito de muestras)", "sol": 693, "lon": 77.40821, "lat": 18.45296},
+    "cheyava_falls": {"name": "Cheyava Falls (Sapphire Canyon)", "sol": 1210, "work_sols": [1215, 1219],
+                      "lon": 77.30519, "lat": 18.49748},
 }

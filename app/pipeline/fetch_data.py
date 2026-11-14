@@ -1,13 +1,17 @@
 import json
+import math
 import os
 import sys
+import time
+import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import rasterio
 from rasterio.windows import from_bounds
 
-from aoi import BOTTOM, CACHE, LEFT, RAW, RIGHT, ROOT, TOP
+from aoi import BOTTOM, CACHE, LAT_MAX, LAT_MIN, LEFT, LON_MAX, LON_MIN, MARS_R, RAW, RIGHT, ROOT, SITES, TOP
 
 MMGIS = "https://mars.nasa.gov/mmgis-maps/M20/Layers/json"
 ZENODO = "https://zenodo.org/api/records/5575824/files"
@@ -30,6 +34,18 @@ RASTER_CROPS = {
 
 DONKI_SEP = ("https://api.nasa.gov/DONKI/SEP?startDate=2024-05-01&endDate=2024-05-31&api_key={key}",
              CACHE / "donki_sep_2024-05.json")
+DONKI_MARS = ("https://api.nasa.gov/DONKI/WSAEnlilSimulations?startDate=2024-05-01&endDate=2024-05-31&api_key={key}",
+              CACHE / "donki_mars_2024-05.json")
+
+SIM3464 = ("https://services.arcgis.com/v01gqwM5QqNysAAi/arcgis/rest/services/Jezero_FeatureServiceFromPro/"
+           "FeatureServer/8/query")
+SIM3464_DEST = CACHE / "sim3464_units.geojson"
+
+TREK = ("https://trek.nasa.gov/tiles/Mars/EQ/JEZ_hirise_soc_006_orthoMosaic_25cm_Eqc_latTs0_lon0_first_dd/"
+        "1.0.0/default/default028mm/{z}/{row}/{col}.png")
+TREK_DIR = RAW / "trek"
+TREK_INSET_M = 400
+UA = {"User-Agent": "ariadne-pipeline/1.0 (offline data build)"}
 
 GDAL_ENV = {
     "GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR",
@@ -84,17 +100,92 @@ def crop_remote(url: str, dest: Path) -> None:
     tmp.rename(dest)
 
 
+def get_json(url: str, retries: int = 3):
+    for i in range(retries):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=60) as r:
+                return json.load(r)
+        except Exception:
+            if i == retries - 1:
+                raise
+            time.sleep(2 * (i + 1))
+
+
 def fetch_donki() -> None:
-    url, dest = DONKI_SEP
-    if dest.exists():
-        print(f"= {dest.name} (cached)")
+    key = None
+    for url, dest in (DONKI_SEP, DONKI_MARS):
+        if dest.exists():
+            print(f"= {dest.name} (cached)")
+            continue
+        print(f"↓ {dest.name}")
+        key = key or nasa_api_key()
+        data = get_json(url.format(key=key))
+        if not isinstance(data, list):
+            raise ValueError(f"unexpected DONKI response: {str(data)[:200]}")
+        if dest == DONKI_MARS[1]:
+            data = [
+                {"simulationID": s["simulationID"], "cmeStartTime": c["cmeStartTime"], "speed": c["speed"],
+                 "halfAngle": c["halfAngle"], "arrivalTime": i["arrivalTime"],
+                 "isGlancingBlow": i["isGlancingBlow"], "link": s["link"]}
+                for s in data for c in s.get("cmeInputs", [])[:1] if c["isMostAccurate"]
+                for i in s.get("impactList") or [] if i["location"] == "Mars"
+            ]
+            data.sort(key=lambda e: e["arrivalTime"])
+        dest.write_text(json.dumps(data, indent=1))
+
+
+def fetch_geounits() -> None:
+    if SIM3464_DEST.exists():
+        print(f"= {SIM3464_DEST.name} (cached)")
         return
-    print(f"↓ {dest.name}")
-    with urllib.request.urlopen(url.format(key=nasa_api_key()), timeout=60) as r:
-        events = json.load(r)
-    if not isinstance(events, list):
-        raise ValueError(f"unexpected DONKI response: {str(events)[:200]}")
-    dest.write_text(json.dumps(events, indent=1))
+    print(f"↓ {SIM3464_DEST.name}")
+    q = {"geometry": f"{LON_MIN},{LAT_MIN},{LON_MAX},{LAT_MAX}", "geometryType": "esriGeometryEnvelope",
+         "inSR": 4326, "outSR": 4326, "maxAllowableOffset": 0.0002,
+         "outFields": "name,symbol,Unit_Description,Unit_Interpretation", "f": "geojson"}
+    gj = get_json(f"{SIM3464}?{urllib.parse.urlencode(q)}")
+    if not gj.get("features"):
+        raise ValueError(f"SIM 3464: no features: {str(gj)[:200]}")
+    SIM3464_DEST.write_text(json.dumps(gj, separators=(",", ":")))
+
+
+def trek_tile(z: int, lon: float, lat: float) -> tuple[int, int]:
+    return math.floor((90 - lat) / 180 * 2**z), math.floor((lon + 180) / 360 * 2 * 2**z)
+
+
+def fetch_trek(z: int, bbox: tuple[float, float, float, float], dest: Path = TREK_DIR) -> tuple[int, int]:
+    r0, c0 = trek_tile(z, bbox[0], bbox[3])
+    r1, c1 = trek_tile(z, bbox[2], bbox[1])
+    todo = [(r, c) for r in range(r0, r1 + 1) for c in range(c0, c1 + 1)
+            if not (dest / str(z) / str(r) / f"{c}.png").exists()]
+
+    def one(rc):
+        r, c = rc
+        out = dest / str(z) / str(r) / f"{c}.png"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        for i in range(3):
+            try:
+                with urllib.request.urlopen(urllib.request.Request(TREK.format(z=z, row=r, col=c), headers=UA),
+                                            timeout=60) as resp:
+                    tmp = out.with_suffix(".part")
+                    tmp.write_bytes(resp.read())
+                    tmp.rename(out)
+                return True
+            except Exception:
+                time.sleep(2 * (i + 1))
+        return False
+
+    total = (r1 - r0 + 1) * (c1 - c0 + 1)
+    print(f"↓ trek z{z}: {len(todo)}/{total} tiles to fetch")
+    with ThreadPoolExecutor(8) as ex:
+        missing = sum(not ok for ok in ex.map(one, todo))
+    return total, missing
+
+
+def trek_windows() -> list[tuple[int, tuple[float, float, float, float]]]:
+    half = TREK_INSET_M / 2 / (MARS_R * math.pi / 180)
+    wins = [(15, (LON_MIN, LAT_MIN, LON_MAX, LAT_MAX))]
+    wins += [(17, (s["lon"] - half, s["lat"] - half, s["lon"] + half, s["lat"] + half)) for s in SITES.values()]
+    return wins
 
 
 def main() -> int:
@@ -107,10 +198,18 @@ def main() -> int:
             fn(url, dest)
         except Exception as e:
             failed.append(f"{dest.name}: {e}")
-    try:
-        fetch_donki()
-    except Exception as e:
-        failed.append(f"DONKI: {e}")
+    for name, fn in (("DONKI", fetch_donki), ("SIM3464", fetch_geounits)):
+        try:
+            fn()
+        except Exception as e:
+            failed.append(f"{name}: {e}")
+    for z, bbox in trek_windows():
+        try:
+            total, missing = fetch_trek(z, bbox)
+            if missing:
+                failed.append(f"Trek z{z}: {missing}/{total} tiles missing (re-run to retry)")
+        except Exception as e:
+            failed.append(f"Trek z{z}: {e}")
     for f in failed:
         print(f"✗ {f}", file=sys.stderr)
     return 1 if failed else 0

@@ -1,15 +1,24 @@
 {
-  "_note": "ALL VALUES ARE NOMINAL ASSUMPTIONS — calibrate with real suit data before trusting them.",
+  "_note": "ALL VALUES ARE NOMINAL ASSUMPTIONS (eva_energy_budget_j = 10 MJ ≈ 2.8 kWh of metabolic energy for one EVA; sized so the default Three Forks → Cheyava Falls round trip clears the 20 % return margin) — calibrate with real suit data before trusting them. Exception: the radiation block is a published measurement.",
   "gravity_ratio": 0.38,
   "astronaut_mass_kg": 80,
   "load_kg": 50,
   "walk_speed_ms": 0.8,
   "max_slope_deg": 18,
-  "eva_energy_budget_j": 8600000,
+  "eva_energy_budget_j": 10000000,
   "return_margin": 0.2,
   "terrain_factor": {
     "bedrock": 1.1,
     "loose_sand": 2.1
+  },
+  "radiation": {
+    "event_date": "2024-05-20",
+    "event_dose_uGy": 8100,
+    "event_equiv_chest_xrays": 30,
+    "event_site": "Gale crater (Curiosity RAD); not measured at Jezero",
+    "event_src": "https://www.nasa.gov/solar-system/planets/mars/nasa-watches-mars-light-up-during-epic-solar-storm",
+    "unit": "absorbed dose, micrograys (µGy)",
+    "_note": "A quiet-day baseline (210 µGy/day, Hassler et al. 2014) was dropped: its source (the NTRS abstract) does not state it."
   },
   "_habitat": "Three Forks — set from grid meta.sites"
 }

@@ -1,0 +1,112 @@
+{
+ "note": "Data credit only; no NASA insignia. Derived layers are computed by Ariadne.",
+ "items": [
+  {
+   "id": "hirise",
+   "what": "Map background: HiRISE 25 cm orthomosaic, greyscale crop of Mars Trek z15 tiles",
+   "files": [
+    "hirise_aoi.webp"
+   ],
+   "credit": "NASA/JPL-Caltech/UArizona/USGS Astrogeology, via NASA Mars Trek",
+   "url": "https://trek.nasa.gov/mars/",
+   "doi": "10.5066/P9QJDP48"
+  },
+  {
+   "id": "dtm",
+   "what": "Elevation, slope, sky view factor and viewsheds derived from the HiRISE 1 m DTM",
+   "files": [
+    "jezero_cost_grid.json: elevation_m, slope_deg, svf, viewshed, viewshed_relay"
+   ],
+   "credit": "NASA/JPL-Caltech/USGS Astrogeology Science Center (Fergason et al. 2020, Mars 2020 TRN HiRISE DTM mosaic)",
+   "url": "https://doi.org/10.5066/P9REJ9JN",
+   "doi": "10.5066/P9REJ9JN"
+  },
+  {
+   "id": "themis",
+   "what": "Thermal inertia (sand vs bedrock)",
+   "files": [
+    "jezero_cost_grid.json: thermal_inertia, thermal_inertia_si"
+   ],
+   "credit": "NASA/JPL-Caltech/ASU, Mars Odyssey THEMIS global thermal inertia mosaic, USGS Astropedia",
+   "url": "https://asc-astropedia.s3.us-west-2.amazonaws.com/Mars/Odyssey/THEMIS-Global-Thermal-Inertia-Mosaic/"
+  },
+  {
+   "id": "crism",
+   "what": "Mineral map used as the science score",
+   "files": [
+    "jezero_cost_grid.json: science"
+   ],
+   "credit": "Parente, Saranathan, Itoh, Tarnas (2021), CRISM mineralogy of the Mars 2020 landing ellipse",
+   "url": "https://doi.org/10.5281/zenodo.5575824",
+   "doi": "10.5281/zenodo.5575824"
+  },
+  {
+   "id": "geology",
+   "what": "Geologic units (7 in the AOI), rasterised",
+   "files": [
+    "jezero_cost_grid.json: geo_unit",
+    "geounits.json"
+   ],
+   "credit": "Sun & Stack (2020), Geologic map of Jezero crater and the Nili Planum region, Mars, USGS SIM 3464",
+   "url": "https://pubs.usgs.gov/sim/3464/",
+   "doi": "10.3133/sim3464"
+  },
+  {
+   "id": "m20",
+   "what": "Perseverance traverse and waypoints (validation, confidence). Three Forks start: approximate, ±50 m (depot centre estimated from sol 681/693 waypoints; NASA publishes no depot coordinates). Validation: n = 357 waypoints (not independent), traverse cells = 1272 line vertices incl. revisits",
+   "files": [
+    "traverse_cells.json",
+    "validation.json",
+    "jezero_cost_grid.json: confidence"
+   ],
+   "credit": "NASA/JPL-Caltech, Mars 2020 MMGIS",
+   "url": "https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_waypoints.json"
+  },
+  {
+   "id": "donki",
+   "what": "CME arrivals at Mars, May 2024 (WSA-ENLIL). Rows are simulation runs, several repeat the same CME: cite only the arrival used, sim 30979, 2024-05-20T07:52Z",
+   "files": [
+    "donki_mars_2024-05.json"
+   ],
+   "credit": "NASA GSFC Community Coordinated Modeling Center, DONKI",
+   "url": "https://ccmc.gsfc.nasa.gov/tools/DONKI/"
+  },
+  {
+   "id": "rad",
+   "what": "Dose of the 20 May 2024 solar storm measured by Curiosity RAD at Gale (8,100 µGy)",
+   "files": [
+    "mission_config.json: radiation"
+   ],
+   "credit": "NASA/JPL-Caltech, Curiosity Radiation Assessment Detector",
+   "url": "https://www.nasa.gov/solar-system/planets/mars/nasa-watches-mars-light-up-during-epic-solar-storm"
+  },
+  {
+   "id": "meda",
+   "what": "Air temperature, pressure and sun elevation, sol 1210",
+   "files": [
+    "meda_sol1210.json"
+   ],
+   "credit": "Mars 2020 Perseverance MEDA (CAB/CAB-IAA), PDS Atmospheres Node, NMSU",
+   "url": "https://atmos.nmsu.edu/PDS/data/PDS4/Mars2020/mars2020_meda/data_derived_env/sol_1140_1259/sol_1210/"
+  },
+  {
+   "id": "science",
+   "what": "Destination science summary and citation",
+   "files": [
+    "science.json"
+   ],
+   "credit": "Hurowitz et al. (2025), Nature 645, 332-340",
+   "url": "https://doi.org/10.1038/s41586-025-09413-0",
+   "doi": "10.1038/s41586-025-09413-0"
+  },
+  {
+   "id": "pov",
+   "what": "Perseverance photographs",
+   "files": [
+    "pov/*.webp"
+   ],
+   "credit": "NASA/JPL-Caltech (MSSS, ASU where noted); exact credit, date and source per photo in pov/pov.json",
+   "url": "https://photojournal.jpl.nasa.gov/"
+  }
+ ]
+}

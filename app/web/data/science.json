@@ -1,0 +1,77 @@
+{
+  "destination": {
+    "id": "cheyava_falls",
+    "name": "Cheyava Falls / Sapphire Canyon",
+    "formation": "Bright Angel",
+    "place": "Neretva Vallis",
+    "workspace": "Beaver Falls",
+    "cell": [22, 30],
+    "lon": 77.30527379,
+    "lat": 18.49751379,
+    "position_note_es": "Última parada del rover registrada en MMGIS en el sol 1210 (sitio 55), donde permanece hasta el sol 1217. No son las coordenadas del parche abrasionado.",
+    "position_note_en": "Last rover stop logged in MMGIS on sol 1210 (site 55); the rover stays there through sol 1217. Not the abrasion-patch coordinates."
+  },
+  "objective": {
+    "headline_es": "Biofirma potencial en Neretva Vallis",
+    "headline_en": "Potential biosignature in Neretva Vallis",
+    "summary_es": "En la formación Bright Angel, Perseverance halló un lodolito con carbono orgánico y manchas de leopardo: nódulos y frentes de reacción con fosfato y sulfuro de hierro (probablemente vivianita y greigita). Esas reacciones redox, a baja temperatura, podrían ser de origen biológico, pero no se descartan vías no biológicas. El núcleo Sapphire Canyon (sol 1215) está sellado para analizarse en la Tierra.",
+    "summary_en": "In the Bright Angel formation, Perseverance found an organic-carbon-bearing mudstone with leopard spots: nodules and reaction fronts rich in iron phosphate and iron sulfide (likely vivianite and greigite). These low-temperature redox reactions could be biological in origin, but non-biological pathways are not ruled out. The Sapphire Canyon core (sol 1215) is sealed for analysis on Earth.",
+    "caution_es": "El artículo dice «biofirma potencial», no vida. Confirmarlo exige análisis de alta sensibilidad en laboratorios terrestres.",
+    "caution_en": "The paper says \"potential biosignature\", not life. Confirming it needs high-sensitivity analysis in Earth laboratories.",
+    "spots_es": "Manchas de unos 0,2 a 1 mm, con borde oscuro y núcleo más claro.",
+    "spots_en": "Spots about 0.2 to 1 mm across, dark-toned rims and lighter cores."
+  },
+  "citation": {
+    "text": "Hurowitz, J. A., Tice, M. M., Allwood, A. C. et al. Redox-driven mineral and organic associations in Jezero Crater, Mars. Nature 645, 332-340 (2025).",
+    "doi": "10.1038/s41586-025-09413-0",
+    "url": "https://doi.org/10.1038/s41586-025-09413-0",
+    "published": "2025-09-10",
+    "licence": "CC BY-NC-ND 4.0; summarised in our own words, no figures reused",
+    "source_text": "Europe PMC full text PMC12422973"
+  },
+  "timeline": [
+    {
+      "id": "walhalla_glades", "target": "Walhalla Glades", "sol": 1178, "sol_end": 1180,
+      "instrument": "Mastcam-Z, SHERLOC",
+      "cell": [26, 26], "lon": 77.30383571, "lat": 18.49611249, "wp_sol": 1177,
+      "es": "Afloramiento claro, ~110 m cuesta abajo del taller de trabajo: mosaico del sol 1178, antes de abrasionar; SHERLOC en el sol 1180.",
+      "en": "Bright-toned outcrop, ~110 m downslope of the workspace: mosaic on sol 1178 before abrasion; SHERLOC on sol 1180."
+    },
+    {
+      "id": "cheyava_watson", "target": "Cheyava Falls", "sol": 1188, "sol_end": 1188,
+      "instrument": "WATSON",
+      "cell": [22, 30], "lon": 77.30520347, "lat": 18.49740179, "wp_sol": 1185,
+      "es": "Imagen nocturna a 3,9 cm de la roca: se ven las manchas de leopardo (21 micras por píxel).",
+      "en": "Night image from 3.9 cm: the leopard spots show up (21 microns per pixel)."
+    },
+    {
+      "id": "cheyava_sherloc", "target": "Cheyava Falls", "sol": 1201, "sol_end": 1202,
+      "instrument": "SHERLOC (ACI)",
+      "cell": [22, 30], "lon": 77.30513333, "lat": 18.49744297, "wp_sol": 1195,
+      "es": "Imagen de contexto de SHERLOC (ACI) sobre las manchas de Cheyava Falls.",
+      "en": "SHERLOC context imaging (ACI) over the Cheyava Falls spots."
+    },
+    {
+      "id": "apollo_temple", "target": "Apollo Temple", "sol": 1213, "sol_end": 1217,
+      "instrument": "PIXL, SuperCam, SHERLOC",
+      "cell": [22, 30], "lon": 77.30527379, "lat": 18.49751379, "wp_sol": 1210,
+      "es": "Abrasión en la misma roca: PIXL mapea la química (sol 1213); SuperCam registra una fluorescencia compatible con materia orgánica; SHERLOC mide en el sol 1217.",
+      "en": "Abrasion on the same rock: PIXL maps chemistry (sol 1213); SuperCam records a fluorescence consistent with organic matter; SHERLOC measures on sol 1217."
+    },
+    {
+      "id": "sapphire_canyon", "target": "Sapphire Canyon (muestra 25 / sample 25)", "sol": 1215, "sol_end": 1215,
+      "instrument": "Sampling system",
+      "cell": [22, 30], "lon": 77.30527379, "lat": 18.49751379, "wp_sol": 1210,
+      "es": "Núcleo de roca sedimentaria de 6,2 cm sellado el 21 de julio de 2024; viaja en el rover.",
+      "en": "6.2 cm sedimentary rock core sealed on 21 July 2024; carried aboard the rover."
+    }
+  ],
+  "instruments": [
+    {"name": "SHERLOC", "doi": "10.17189/1522643"},
+    {"name": "PIXL", "doi": "10.17189/1522645"},
+    {"name": "SuperCam", "doi": "10.17189/1522646"},
+    {"name": "Mastcam-Z", "doi": "10.17189/q3ts-c749"},
+    {"name": "WATSON / ACI / MCC", "doi": "10.17189/1522846"}
+  ],
+  "credit": "Paper: Hurowitz et al. 2025 (above). Sample table: NASA/JPL-Caltech, science.nasa.gov/mission/mars-2020-perseverance/mars-rock-samples. Positions: JPL MMGIS M20_waypoints."
+}
