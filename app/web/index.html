@@ -37,6 +37,7 @@
   </header>
 
   <main class="console" aria-busy="true">
+    <div class="col">
     <section class="map-col" aria-labelledby="map-t">
       <h2 id="map-t" class="sr" data-i18n="map.region">Mapa de la EVA, cráter Jezero</h2>
       <div class="map-frame">
@@ -87,7 +88,13 @@
         </div>
       </div>
     </section>
+    <section id="destino" class="z535 card-dest" tabindex="-1" data-tone="neutral" aria-labelledby="dest-t" hidden>
+      <h2 class="band" id="dest-t"><span data-i18n="dest.title">Destino · Cheyava Falls</span></h2>
+      <div class="body" id="dest-body"></div>
+    </section>
+    </div>
 
+    <div class="col">
     <aside class="side-col" aria-label="Estado de la EVA y controles" data-i18n-aria="side.region">
       <section id="safe" class="z535" data-tone="pending" role="status" aria-live="polite" aria-labelledby="safe-t">
         <div class="symbol"><svg aria-hidden="true"><use/></svg></div>
@@ -134,18 +141,12 @@
         </section>
       </div>
     </aside>
-  </main>
-
-  <div class="below">
-    <section id="destino" class="z535 card-dest" tabindex="-1" data-tone="neutral" aria-labelledby="dest-t" hidden>
-      <h2 class="band" id="dest-t"><span data-i18n="dest.title">Destino · Cheyava Falls</span></h2>
-      <div class="body" id="dest-body"></div>
-    </section>
     <section id="validacion" class="z535 card-val" data-tone="neutral" aria-labelledby="val-t" hidden>
       <h2 class="band" id="val-t"><span data-i18n="val.title">Validación</span></h2>
       <div class="body" id="val-body"></div>
     </section>
-  </div>
+    </div>
+  </main>
 
   <footer class="credits" id="credits"></footer>
 

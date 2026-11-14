@@ -105,7 +105,7 @@ function recompute() {
   if (!state.moved) $("elapsed").value = state.route.length ? Math.min($("elapsed").max, Math.ceil(state.tl.tArr / 300) * 5) : 0;
   renderOutputs(); clearSpe(); updateEnv(); renderPanels(); draw();
 }
-function setGoal(i) { state.goal = i; $("reset-goal").disabled = i === cheyava; recompute(); }
+function setGoal(i) { state.goal = i; state.moved = false; $("reset-goal").disabled = i === cheyava; recompute(); }
 
 function simulateSpe() {
   if (state.spe) { clearSpe(); draw(); return; }
@@ -131,7 +131,7 @@ function renderPanels() {
   const [glyph, sym] = s === "ok" ? ["g-return", "s-return"] : s === "pending" ? [null, null] : ["g-prohibit", "s-forbidden"];
   setUse($("safe-t").querySelector("svg"), glyph); setUse(p.querySelector(".symbol svg"), sym);
   $("safe-title").textContent = t(`safe.title.${s}`);
-  let value = "—", detail = "", rv = "—", rd = "", ev = "—", ed = "";
+  let value = "—", detail = "", rv = "—", rd = "", ev = "—", ed = "", over = false;
   if (cfg && (s === "ok" || s === "no")) {
     value = t(s === "ok" ? "safe.value.yes" : "safe.value.no");
     const dest = state.goal === cheyava ? t("label.cheyava") : t("dest.the"), mins = (sec) => Math.floor(sec / 60);
@@ -140,13 +140,16 @@ function renderPanels() {
       : t("safe.detail.ok", { arr: duration(state.tl.tArr / 60), site: duration(mins(state.turn.siteS)), dest, back: duration(mins(state.turn.turnS)) });
     rv = t("route.value", { km: num(st.lengthM / 1000, 2) });
     rd = t("route.detail", { dur: duration(walkMin(st.lengthM)), speed: num(cfg.walk_speed_ms, 1) });
-    ev = t("energy.value", { pct: num(Math.min(100, (100 * state.spent) / B), 0) });
-    ed = t("energy.detail", { mj: num(state.spent / 1e6, 2), budget: num(B / 1e6, 2) });
+    over = state.spent > B;
+    ev = t("energy.value", { pct: num((100 * state.spent) / B, 0) });
+    ed = t(over ? "energy.detail_over" : "energy.detail", { mj: num(state.spent / 1e6, 2), budget: num(B / 1e6, 2) });
   } else if (s === "forbidden") { detail = t("safe.detail.forbidden", { max: num(cfg.max_slope_deg, 0) }); rd = t("route.none"); }
   else if (s === "unreachable") { detail = t("safe.detail.unreachable"); rd = t("route.none"); }
   $("safe-value").textContent = value; $("safe-detail").textContent = detail;
   $("route-value").textContent = rv; $("route-detail").textContent = rd;
   $("energy-value").textContent = ev; $("energy-detail").textContent = ed;
+  $("energy-value").classList.toggle("over", over);
+  const ep = $("energy-t").closest(".z535"); ep.dataset.tone = over ? "danger" : "neutral"; setUse($("energy-t").querySelector("svg"), over ? "g-prohibit" : null);
 }
 
 function renderOutputs() {
@@ -198,7 +201,7 @@ function geoSwatch(u) {
 }
 function renderLayerLegend() {
   const key = $("layer").value, box = $("layer-legend");
-  box.replaceChildren();
+  box.replaceChildren(); box.classList.remove("geo");
   if (!ready || key === "none") return;
   if (key === "viewshed") {
     const r = meta.relay;
@@ -210,7 +213,8 @@ function renderLayerLegend() {
       box.append(h("span", "grp", `<svg class="sign" viewBox="0 0 48 48" aria-hidden="true"><use href="#s-relay"/></svg>${esc(t("comms.relay_note"))}`));
     }
   } else if (key === "geo_unit") {
-    for (const u of geoInfo) { const row = h("span", "geo-row"); row.append(geoSwatch(u), h("b", "", esc(u.symbol)), h("span", "", esc(pick(u, "plain")))); box.append(row); }
+    box.classList.add("geo");
+    for (const u of geoInfo) { const row = h("span", "geo-row"); row.title = `${pick(u, "name")}: ${pick(u, "plain")}`; row.append(geoSwatch(u), h("b", "", esc(u.symbol)), h("span", "", esc(pick(u, "name")))); box.append(row); }
     box.append(h("span", "note", esc(t("geo.note"))));
   } else {
     const [lo, hi] = rangeOf(key), unit = $("layer").selectedOptions[0].dataset.unit, d = key === "elevation_m" || key === "thermal_inertia_si" ? 0 : 1;

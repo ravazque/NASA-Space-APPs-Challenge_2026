@@ -76,6 +76,7 @@ export const DICT = {
     "energy.title": "Energía",
     "energy.value": `{pct}${N}%`,
     "energy.detail": `{mj} de {budget}${N}MJ gastados: marcha + trabajo (nominal)`,
+    "energy.detail_over": `{mj} de {budget}${N}MJ: presupuesto superado`,
     "eva.label": "Hora de EVA",
     "eva.hint": "Camina hasta el destino y trabaja allí: según pasa el reloj, se encoge la zona desde la que aún puedes volver.",
     "prio.legend": "Prioridades de la ruta",
@@ -204,6 +205,7 @@ export const DICT = {
     "energy.title": "Energy",
     "energy.value": `{pct}${N}%`,
     "energy.detail": `{mj} of {budget}${N}MJ spent: walking + station work (nominal)`,
+    "energy.detail_over": `{mj} of {budget}${N}MJ: budget exceeded`,
     "eva.label": "EVA clock",
     "eva.hint": "Walk to the destination and work there: as the clock runs, the area you can still return from shrinks.",
     "prio.legend": "Route priorities",
@@ -284,9 +286,9 @@ export function apply(root = document) {
 }
 
 export function setLang(l, onChange) {
+  try { const u = new URL(location.href); u.searchParams.set("lang", l); history.replaceState(null, "", u); } catch {}
   if (l === lang) return;
   lang = l;
   try { localStorage.setItem(KEY, l); } catch {}
-  try { const u = new URL(location.href); u.searchParams.set("lang", l); history.replaceState(null, "", u); } catch {}
   apply(); onChange?.();
 }

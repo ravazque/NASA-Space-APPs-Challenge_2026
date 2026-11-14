@@ -17,7 +17,7 @@ function dest({ data: { science: sci, pov }, t, date, pick }) {
       sel = n;
       tabs.querySelectorAll("button").forEach((b, i) => { b.setAttribute("aria-selected", String(i === n)); b.tabIndex = i === n ? 0 : -1; });
       const p = photos[n], pano = p.file.startsWith("pano"), img = new Image();
-      img.alt = pick(p, "caption"); img.decoding = "async"; img.src = `data/pov/${p.file}`;
+      img.alt = pick(p, "caption"); img.src = `data/pov/${p.file}`;
       view.className = `viewer${pano ? "" : " fit"}`; view.replaceChildren(img);
       if (pano) img.onload = () => { view.scrollLeft = first && keep != null ? keep : view.scrollWidth * 0.55 - view.clientWidth / 2; };
       view.setAttribute("aria-labelledby", `tab-${n}`);
