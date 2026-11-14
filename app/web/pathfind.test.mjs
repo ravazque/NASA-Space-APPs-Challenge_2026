@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { pandolfWatts, energyGrid, shortestPath, dijkstra, walkbackMask, pathStats } from "./pathfind.js";
+import { pandolfWatts, energyGrid, planningGrid, shortestPath, dijkstra, walkbackMask, pathStats } from "./pathfind.js";
 
 const cfg = { astronaut_mass_kg: 80, load_kg: 50, walk_speed_ms: 0.8, gravity_ratio: 0.38,
   max_slope_deg: 18, terrain_factor: { bedrock: 1.1, loose_sand: 2.1 } };
@@ -28,5 +28,20 @@ assert.equal(mask[0], 1); assert.equal(mask[4], 0);
 const st = pathStats([0, 1, 5], new Float32Array(9).fill(10), 3, 20);
 assert.ok(Math.abs(st.lengthM - (20 + 20 * Math.SQRT2)) < 1e-9);
 assert.ok(Math.abs(st.energyJ - (10 + 10 * Math.SQRT2)) < 1e-9);
+
+assert.deepEqual(shortestPath(new Float32Array(9).fill(1), 3, 3, 0, 99), []);
+
+const sq = new Float32Array(9).fill(1); sq[1] = Infinity; sq[3] = Infinity;
+assert.equal(dijkstra(sq, 3, 3, 0).dist[4], Infinity);
+
+assert.equal(pandolfWatts(0, 1.1, { ...cfg, gravity_ratio: 1 }).toFixed(2), "358.84");
+
+const pl = planningGrid(new Float32Array([10, 20, Infinity, 10]),
+  { thermal_inertia: [0.5, 0.5, 0.5, 0.5], svf: [1, 1, 1, 1], viewshed: [1, 1, 1, 1], science: [1, 1, 1, 1] },
+  { energy: 1, risk: 1, comms: 1, radiation: 1, science: 5 });
+assert.ok(pl[0] > 0 && pl[3] > 0 && pl[1] > pl[0] && pl[2] === Infinity);
+
+assert.equal(walkbackMask([80], 100, 0.2)[0], 1);
+assert.equal(walkbackMask([81], 100, 0.2)[0], 0);
 
 console.log("pathfind: all checks passed");

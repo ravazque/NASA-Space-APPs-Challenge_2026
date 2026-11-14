@@ -20,18 +20,27 @@ export function energyGrid(layers, cellM, cfg) {
   return out;
 }
 
+export const PLAN_BASE = 0.25;
+
 export function planningGrid(energy, layers, w) {
   const n = energy.length, out = new Float32Array(n);
-  let maxE = 0;
-  for (const e of energy) if (e !== Infinity && e > maxE) maxE = e;
+  const { thermal_inertia: T, svf: S } = layers;
+  let eMin = Infinity, eMax = -Infinity, tMin = Infinity, tMax = -Infinity, sMin = Infinity, sMax = -Infinity;
+  for (let i = 0; i < n; i++) {
+    if (energy[i] === Infinity) continue;
+    eMin = Math.min(eMin, energy[i]); eMax = Math.max(eMax, energy[i]);
+    tMin = Math.min(tMin, T[i]); tMax = Math.max(tMax, T[i]);
+    sMin = Math.min(sMin, S[i]); sMax = Math.max(sMax, S[i]);
+  }
+  const nrm = (v, lo, hi) => (v - lo) / (hi - lo || 1);
   for (let i = 0; i < n; i++) {
     if (energy[i] === Infinity) { out[i] = Infinity; continue; }
-    const c = w.energy * (energy[i] / maxE)
-      + w.risk * (1 - layers.thermal_inertia[i])
+    out[i] = PLAN_BASE
+      + w.energy * nrm(energy[i], eMin, eMax)
+      + w.risk * (1 - nrm(T[i], tMin, tMax))
       + w.comms * (1 - layers.viewshed[i])
-      + w.radiation * layers.svf[i]
-      - w.science * layers.science[i];
-    out[i] = Math.max(0.01, c);
+      + w.radiation * nrm(S[i], sMin, sMax)
+      + w.science * (1 - layers.science[i]);
   }
   return out;
 }
@@ -68,6 +77,7 @@ export function dijkstra(cost, rows, cols, start, goal = -1) {
     for (const [dr, dc, len] of NEIGHBOURS) {
       const nr = r + dr, nc = c + dc;
       if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+      if (dr && dc && (cost[r * cols + nc] === Infinity || cost[nr * cols + c] === Infinity)) continue;
       const v = nr * cols + nc, alt = du + ((cost[u] + cost[v]) / 2) * len;
       if (alt < dist[v]) { dist[v] = alt; prev[v] = u; heap.push(alt, v); }
     }
@@ -77,7 +87,7 @@ export function dijkstra(cost, rows, cols, start, goal = -1) {
 
 export function shortestPath(cost, rows, cols, start, goal) {
   const { prev, dist } = dijkstra(cost, rows, cols, start, goal);
-  if (dist[goal] === Infinity) return [];
+  if (!(dist[goal] < Infinity)) return [];
   const path = [];
   for (let i = goal; i !== -1; i = prev[i]) path.push(i);
   return path.reverse();
