@@ -25,7 +25,7 @@ const loadImage = (src) => new Promise((ok, no) => { const i = new Image(); i.on
 let rows, cols, cellM, meta, layers, cfg, traverse, donki, meda, science, pov, validation, geounits, credits, bg;
 let energy, returnEnergy, planLayers, refugeSvf, habitat, cheyava, trav = [], geoInfo = [], traversePct = NaN, basePct = NaN;
 let ready = false, coreErr = null;
-const state = { goal: 0, route: [], stats: null, spe: null, safe: "pending" };
+const state = { goal: 0, route: [], stats: null, spe: null, safe: "pending", spent: 0 };
 
 const canvas = $("map"), ctx = canvas.getContext("2d");
 let k = 1, sx = 1, sy = 1;
@@ -88,14 +88,20 @@ function astronautIdx() {
 }
 const astronautCell = () => (state.route.length ? state.route[astronautIdx()] : habitat);
 
+function spent() {
+  const part = state.route.length ? pathStats(state.route.slice(0, astronautIdx() + 1), energy, cols, cellM) : { lengthM: 0, energyJ: 0 };
+  const B = cfg.eva_energy_budget_j, rate = B / (cfg.eva_duration_h * 3600), idle = Math.max(0, ($("elapsed").value / 100) * cfg.eva_duration_h * 3600 - part.lengthM / cfg.walk_speed_ms);
+  return part.energyJ + idle * rate;
+}
+
 function updateEnv() {
-  const walked = state.route.length ? pathStats(state.route.slice(0, astronautIdx() + 1), energy, cols, cellM).energyJ : 0;
-  const envMask = walkbackMask(returnEnergy, cfg.eva_energy_budget_j - walked, cfg.return_margin);
+  state.spent = spent();
+  const envMask = walkbackMask(returnEnergy, cfg.eva_energy_budget_j - state.spent, cfg.return_margin);
   const [r, g, b, a] = wash("--wash-outside"), id = new ImageData(cols, rows);
   for (let i = 0; i < envMask.length; i++) if (!envMask[i]) id.data.set([r, g, b, a], i * 4);
   envCanvas ??= mk(cols, rows);
   envCanvas.getContext("2d").putImageData(id, 0, 0);
-  envPath = edges(envMask);
+  envPath = edges(envMask.map((v, i) => v || returnEnergy[i] === Infinity ? 1 : 0));
 }
 
 function recompute() {
@@ -124,20 +130,23 @@ function clearSpe() { state.spe = null; renderSpe(); }
 const setUse = (svg, id) => { const u = svg.tagName === "use" ? svg : svg.querySelector("use"); id ? u.setAttribute("href", `#${id}`) : u.removeAttribute("href"); };
 
 function renderPanels() {
-  const s = state.safe, st = state.stats, p = $("safe");
+  const st = state.stats, p = $("safe"), B = cfg?.eva_energy_budget_j, here = astronautCell();
+  const liveOk = !cfg || (B - state.spent) * (1 - cfg.return_margin) >= returnEnergy[here];
+  const s = state.safe === "ok" && !liveOk ? "no" : state.safe;
   p.dataset.tone = { ok: "safe", pending: "pending" }[s] ?? "danger";
   const [glyph, sym] = s === "ok" ? ["g-return", "s-return"] : s === "pending" ? [null, null] : ["g-prohibit", "s-forbidden"];
   setUse($("safe-t").querySelector("svg"), glyph); setUse(p.querySelector(".symbol svg"), sym);
   $("safe-title").textContent = t(`safe.title.${s}`);
   let value = "—", detail = "", rv = "—", rd = "", ev = "—", ed = "";
   if (cfg && (s === "ok" || s === "no")) {
-    const B = cfg.eva_energy_budget_j, E = st.energyJ;
+    const E = st.energyJ;
     value = t(s === "ok" ? "safe.value.yes" : "safe.value.no");
-    detail = t("safe.detail.ok", { left: num(Math.max(0, (100 * (B - E)) / B), 0), need: num((100 * returnEnergy[state.goal]) / (B * (1 - cfg.return_margin)), 0), margin: num(cfg.return_margin * 100, 0) });
+    detail = t("safe.detail.ok", { left: num(Math.max(0, (100 * (B - E)) / B), 0), need: num((100 * returnEnergy[state.goal]) / (B * (1 - cfg.return_margin)), 0), margin: num(cfg.return_margin * 100, 0) })
+      + " " + t("safe.detail.live", { left: num(Math.max(0, (100 * (B - state.spent)) / B), 0), need: num((100 * returnEnergy[here]) / (B * (1 - cfg.return_margin)), 0) });
     rv = t("route.value", { km: num(st.lengthM / 1000, 2) });
     rd = t("route.detail", { dur: duration(walkMin(st.lengthM)), speed: num(cfg.walk_speed_ms, 1) });
-    ev = t("energy.value", { pct: num((100 * E) / B, 0) });
-    ed = t("energy.detail", { mj: num(E / 1e6, 2), budget: num(B / 1e6, 2) });
+    ev = t("energy.value", { pct: num(Math.min(100, (100 * state.spent) / B), 0) });
+    ed = t("energy.detail", { mj: num(state.spent / 1e6, 2), budget: num(B / 1e6, 2) });
   } else if (s === "forbidden") { detail = t("safe.detail.forbidden", { max: num(cfg.max_slope_deg, 0) }); rd = t("route.none"); }
   else if (s === "unreachable") { detail = t("safe.detail.unreachable"); rd = t("route.none"); }
   $("safe-value").textContent = value; $("safe-detail").textContent = detail;
@@ -163,6 +172,7 @@ function radLine() {
 function renderSpe() {
   const s = state.spe, b = $("spe"), box = $("spe-body");
   b.setAttribute("aria-pressed", String(!!s));
+  $("spe-label").textContent = t(s ? "spe.button_active" : "spe.button");
   $("spe-panel").hidden = !s;
   for (const li of document.querySelectorAll("[data-only=spe]")) li.hidden = !s;
   if (!s) return box.replaceChildren();
@@ -350,7 +360,7 @@ function draw() {
     labels.push({ text, x: flip ? x - 11 : x + 11, y, a: flip ? "right" : "left", w: 600, s: FS });
   };
   ctx.lineJoin = "round";
-  if ($("show-traverse").checked && trav.length > 1) { ctx.lineCap = "butt"; trace(trav, ground, 3.5, []); trace(trav, ink, 1.5, [5, 4]); }
+  if ($("show-traverse").checked && trav.length > 1) { ctx.lineCap = "butt"; ctx.globalAlpha = 0.6; trace(trav, ink, 1, [4, 4]); ctx.globalAlpha = 1; }
   ctx.lineCap = "round";
   if (state.route.length > 1) { trace(state.route, ground, 7, []); trace(state.route, blue, 4, []); }
   if (state.spe?.path.length > 1) { ctx.lineCap = "butt"; trace(state.spe.path, ink, 6, []); trace(state.spe.path, tok("--yellow"), 4, [8, 6]); }
@@ -461,7 +471,7 @@ async function boot() {
   $("reset-goal").addEventListener("click", () => setGoal(cheyava));
   let pending = 0;
   for (const w of WEIGHTS) $(`w-${w}`).addEventListener("input", () => { renderOutputs(); pending ||= requestAnimationFrame(() => { pending = 0; recompute(); }); });
-  $("elapsed").addEventListener("input", () => { renderOutputs(); clearSpe(); updateEnv(); draw(); });
+  $("elapsed").addEventListener("input", () => { renderOutputs(); clearSpe(); updateEnv(); renderPanels(); draw(); });
   $("layer").addEventListener("change", () => { buildLayer(); renderLayerLegend(); draw(); });
   $("show-traverse").addEventListener("change", () => { renderLegend(); draw(); });
   $("spe").addEventListener("click", simulateSpe);

@@ -6,7 +6,8 @@
   "walk_speed_ms": 0.8,
   "max_slope_deg": 18,
   "eva_energy_budget_j": 10130000,
-  "_budget_note": "Metabolic energy for one 8 h EVA at 1200 BTU/h (351.7 W): the Apollo PLSS design average and NASA's expected sizing rate for future EVAs in planetary gravity (Waligora et al., NASA TN D-7883; NASA ICES 2026, NTRS 20260005410). The ISS EMU basis (1000 BTU/h) would give 8.44 MJ, and then the default route fails. Only walking energy (Pandolf) is charged: station work and rest are not modelled, so the margin shown is an upper bound. return_margin 0.2 follows Apollo walkback practice (1440 = 1.2 x 1200 BTU/h).",
+  "eva_duration_h": 8,
+  "_budget_note": "Metabolic energy for one 8 h EVA at 1200 BTU/h (351.7 W): the Apollo PLSS design average and NASA's expected sizing rate for future EVAs in planetary gravity (Waligora et al., NASA TN D-7883; NASA ICES 2026, NTRS 20260005410). The ISS EMU basis (1000 BTU/h) would give 8.44 MJ, and then the default route fails. The EVA progress slider is a share of the 8 h: Pandolf walking energy is charged for the distance covered and the remaining elapsed time (station work, rest) at the same 351.7 W (budget / duration), so the walk-back envelope shrinks as the EVA advances. The arrival check on the route card is the plan, walking only. return_margin 0.2 follows Apollo walkback practice (1440 = 1.2 x 1200 BTU/h).",
   "return_margin": 0.2,
   "terrain_factor": {
     "bedrock": 1.1,
