@@ -82,7 +82,7 @@
   },
   {
    "id": "meda",
-   "what": "Air temperature, pressure and sun elevation, sol 1210",
+   "what": "Air temperature and EVA window, sol 1210",
    "files": [
     "meda_sol1210.json"
    ],

@@ -11,7 +11,7 @@ from pathlib import Path
 import rasterio
 from rasterio.windows import from_bounds
 
-from aoi import BOTTOM, CACHE, LAT_MAX, LAT_MIN, LEFT, LON_MAX, LON_MIN, MARS_R, RAW, RIGHT, ROOT, SITES, TOP
+from aoi import BOTTOM, CACHE, LAT_MAX, LAT_MIN, LEFT, LON_MAX, LON_MIN, RAW, RIGHT, ROOT, TOP
 
 MMGIS = "https://mars.nasa.gov/mmgis-maps/M20/Layers/json"
 ZENODO = "https://zenodo.org/api/records/5575824/files"
@@ -28,12 +28,9 @@ FILES = {
 
 RASTER_CROPS = {
     RAW / "dtm_aoi_1m.tif": f"{USGS}/HiRISE/JEZ_hirise_soc_006_DTM_MOLAtopography_DeltaGeoid_1m_Eqc_latTs0_lon0_blend40.tif",
-    RAW / "ctx_aoi_6m.tif": f"{USGS}/CTX/JEZ_ctx_B_soc_008_orthoMosaic_6m_Eqc_latTs0_lon0.tif",
     RAW / "themis_ti_aoi_100m.tif": THEMIS,
 }
 
-DONKI_SEP = ("https://api.nasa.gov/DONKI/SEP?startDate=2024-05-01&endDate=2024-05-31&api_key={key}",
-             CACHE / "donki_sep_2024-05.json")
 DONKI_MARS = ("https://api.nasa.gov/DONKI/WSAEnlilSimulations?startDate=2024-05-01&endDate=2024-05-31&api_key={key}",
               CACHE / "donki_mars_2024-05.json")
 
@@ -44,7 +41,6 @@ SIM3464_DEST = CACHE / "sim3464_units.geojson"
 TREK = ("https://trek.nasa.gov/tiles/Mars/EQ/JEZ_hirise_soc_006_orthoMosaic_25cm_Eqc_latTs0_lon0_first_dd/"
         "1.0.0/default/default028mm/{z}/{row}/{col}.png")
 TREK_DIR = RAW / "trek"
-TREK_INSET_M = 400
 UA = {"User-Agent": "ariadne-pipeline/1.0 (offline data build)"}
 
 GDAL_ENV = {
@@ -113,7 +109,7 @@ def get_json(url: str, retries: int = 3):
 
 def fetch_donki() -> None:
     key = None
-    for url, dest in (DONKI_SEP, DONKI_MARS):
+    for url, dest in (DONKI_MARS,):
         if dest.exists():
             print(f"= {dest.name} (cached)")
             continue
@@ -181,13 +177,6 @@ def fetch_trek(z: int, bbox: tuple[float, float, float, float], dest: Path = TRE
     return total, missing
 
 
-def trek_windows() -> list[tuple[int, tuple[float, float, float, float]]]:
-    half = TREK_INSET_M / 2 / (MARS_R * math.pi / 180)
-    wins = [(15, (LON_MIN, LAT_MIN, LON_MAX, LAT_MAX))]
-    wins += [(17, (s["lon"] - half, s["lat"] - half, s["lon"] + half, s["lat"] + half)) for s in SITES.values()]
-    return wins
-
-
 def main() -> int:
     RAW.mkdir(parents=True, exist_ok=True)
     CACHE.mkdir(parents=True, exist_ok=True)
@@ -203,7 +192,7 @@ def main() -> int:
             fn()
         except Exception as e:
             failed.append(f"{name}: {e}")
-    for z, bbox in trek_windows():
+    for z, bbox in [(15, (LON_MIN, LAT_MIN, LON_MAX, LAT_MAX))]:
         try:
             total, missing = fetch_trek(z, bbox)
             if missing:

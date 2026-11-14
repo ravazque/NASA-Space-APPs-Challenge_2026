@@ -202,7 +202,7 @@ def geo_unit_layer() -> np.ndarray:
 
 
 def geounits_json() -> None:
-    out = [{"id": i + 1, "symbol": s, "color": col, "name_es": ne, "name_en": nn, "plain_es": pe, "plain_en": pn}
+    out = [{"id": i + 1, "symbol": s, "name_es": ne, "name_en": nn, "plain_es": pe, "plain_en": pn}
            for i, (s, col, ne, nn, pe, pn) in enumerate(GEO_UNITS)]
     (WEB_DATA / "geounits.json").write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
 
@@ -276,7 +276,7 @@ def credits() -> dict:
         {"id": "rad", "what": "Dose of the 20 May 2024 solar storm measured by Curiosity RAD at Gale (8,100 µGy)",
          "files": ["mission_config.json: radiation"], "credit": "NASA/JPL-Caltech, Curiosity Radiation Assessment Detector",
          "url": "https://www.nasa.gov/solar-system/planets/mars/nasa-watches-mars-light-up-during-epic-solar-storm"},
-        {"id": "meda", "what": "Air temperature, pressure and sun elevation, sol 1210", "files": ["meda_sol1210.json"],
+        {"id": "meda", "what": "Air temperature and EVA window, sol 1210", "files": ["meda_sol1210.json"],
          "credit": "Mars 2020 Perseverance MEDA (CAB/CAB-IAA), PDS Atmospheres Node, NMSU",
          "url": "https://atmos.nmsu.edu/PDS/data/PDS4/Mars2020/mars2020_meda/data_derived_env/sol_1140_1259/sol_1210/"},
         {"id": "science", "what": "Destination science summary and citation", "files": ["science.json"],

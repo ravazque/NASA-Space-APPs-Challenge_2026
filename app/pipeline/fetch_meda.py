@@ -30,8 +30,7 @@ r1 = lambda v: v if v is None else round(v, 1)
 e = hourly(FILES["anc"], "SOLAR_ZENITHAL_ANGLE", lambda z: 90 - z)
 ok = [s for s in range(24 - WIN_H + 1) if all(e[h] is not None and e[h] >= MIN_ELEV for h in range(s, s + WIN_H))]
 s = max(ok, key=lambda s: sum(t[s:s + WIN_H]))
-out = {"sol": SOL, "date_utc": "2024-07-15", "ltst_h": list(range(24)),
-       "p_pa": p, "t_air_c": [r1(v) for v in t], "sun_elev_deg": [r1(v) for v in e],
+out = {"sol": SOL, "date_utc": "2024-07-15", "t_air_c": [r1(v) for v in t],
        "eva_window": {"start_h": s, "end_h": s + WIN_H,
                       "rule": f"{WIN_H} consecutive LTST hours with sun elevation >= {MIN_ELEV} deg and the warmest mean air temperature ({SENSOR})"},
        "src": {"pressure": FILES["ps"], "ancillary": FILES["anc"], "air_temp": FILES["ats"],

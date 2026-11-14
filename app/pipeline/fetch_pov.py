@@ -74,9 +74,9 @@ def main():
             rows = np.where(a.mean(axis=1) > 8)[0]
             img = img.crop((0, 0, img.width, rows.max() + 1))
         save(img, name, width, 82 if role == "destination-pano" else 80)
-        items.append(dict(file=name, role=role, sol=sol, date_utc=None, instrument=instr,
+        items.append(dict(file=name, sol=sol, date_utc=None, instrument=instr,
                           credit=meta["secondary_creator"], source_url=f"https://photojournal.jpl.nasa.gov/catalog/{pid}",
-                          lon=lon, lat=lat, caption_es=es, caption_en=en, title=meta["title"]))
+                          caption_es=es, caption_en=en))
 
     pia_dates = {"PIA26369": "2024-06-12", "PIA26401": "2024-07-23", "PIA26370": "2024-07-21", "PIA26368": "2024-07-18"}
     for it in items:
