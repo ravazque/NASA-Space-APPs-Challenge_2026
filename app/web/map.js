@@ -399,10 +399,11 @@ export async function init(c) {
     zoomControl: false, attributionControl: false, doubleClickZoom: false, wheelPxPerZoomLevel: 90 });
   for (const [n, z] of Object.entries(PANES)) map.createPane(n).style.zIndex = z;
 
-  const tb = L.latLngBounds([B[0][0] - 0.005, B[0][1] - 0.005], [B[1][0] + 0.005, B[1][1] + 0.005]), fb = L.imageOverlay("data/hirise_aoi.webp", B, { pane: "base", interactive: false, zIndex: 0 });
+  const ATTR = "HiRISE: NASA/JPL/University of Arizona, via NASA Mars Trek";
+  const tb = L.latLngBounds([B[0][0] - 0.005, B[0][1] - 0.005], [B[1][0] + 0.005, B[1][1] + 0.005]), fb = L.imageOverlay("data/hirise_aoi.webp", B, { attribution: ATTR, pane: "base", interactive: false, zIndex: 0 });
   fb.on("error", () => { $("hint").textContent = `${t("map.nobg")} ${t("map.hint")}`; }); fb.addTo(map);
-  L.tileLayer("tiles/{z}/{y}/{x}.webp", { pane: "base", minNativeZoom: 13, maxNativeZoom: 16, maxZoom: 19, bounds: tb, errorTileUrl: BLANK, zIndex: 1 }).addTo(map);
-  L.tileLayer("tiles/{z}/{y}/{x}.webp", { pane: "base", minZoom: 17, minNativeZoom: 17, maxNativeZoom: 17, maxZoom: 19, bounds: tb, errorTileUrl: BLANK, zIndex: 2 }).addTo(map);
+  L.tileLayer("tiles/{z}/{y}/{x}.webp", { attribution: ATTR, pane: "base", minNativeZoom: 13, maxNativeZoom: 16, maxZoom: 19, bounds: tb, errorTileUrl: BLANK, zIndex: 1 }).addTo(map);
+  L.tileLayer("tiles/{z}/{y}/{x}.webp", { attribution: ATTR, pane: "base", minZoom: 17, minNativeZoom: 17, maxNativeZoom: 17, maxZoom: 19, bounds: tb, errorTileUrl: BLANK, zIndex: 2 }).addTo(map);
   new GratLayer({ pane: "graticule", bounds: L.latLngBounds(B).pad(0.25), tileSize: 256 }).addTo(map);
 
   L.control.attribution({ position: "bottomleft", prefix: false }).addTo(map);

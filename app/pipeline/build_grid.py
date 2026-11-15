@@ -262,7 +262,7 @@ def credits() -> dict:
          "credit": "NASA/JPL-Caltech/ASU, Mars Odyssey THEMIS global thermal inertia mosaic, USGS Astropedia",
          "url": "https://asc-astropedia.s3.us-west-2.amazonaws.com/Mars/Odyssey/THEMIS-Global-Thermal-Inertia-Mosaic/"},
         {"id": "crism", "what": "Mineral map used as the science score", "files": ["jezero_cost_grid.json: science"],
-         "credit": "Parente, Saranathan, Itoh, Tarnas (2021), CRISM mineralogy of the Mars 2020 landing ellipse",
+         "credit": "Parente, Saranathan, Itoh, Tarnas, Seelos, Mustard et al. (2021), Map of the dominant mineralogy over and around the Mars2020 landing ellipse with correspondent spectral signatures",
          "url": "https://doi.org/10.5281/zenodo.5575824", "doi": "10.5281/zenodo.5575824"},
         {"id": "geology", "what": "Geologic units (7 in the AOI), rasterised",
          "files": ["jezero_cost_grid.json: geo_unit", "geounits.json"],
