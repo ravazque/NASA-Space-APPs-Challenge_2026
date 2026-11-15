@@ -9,6 +9,8 @@ const NARROW_QUERY = "(max-width: 899px)";
 const CONTROLS_SELECTOR =
   "#pane-plan input, #pane-plan button, #spe, #layer, #show-traverse, #reset-goal";
 const PAGES = { destino: "dest", validacion: "dest", datos: "data" };
+const OVERFLOW_POLL_MS = 1000;
+const OVERFLOW_SLACK_PX = 2;
 
 const viewOf = () => (state.ui.view === "status" ? "status" : "plan");
 const tabsOf = () => VIEW_TABS[viewOf()];
@@ -392,6 +394,11 @@ function setExpanded(expanded) {
 
 const isExpanded = () => document.body.hasAttribute("data-expand");
 
+function paneScrolls() {
+  const pane = TABS.map((name) => $(`pane-${name}`)).find((item) => !item.hidden);
+  return !!pane && pane.scrollHeight > pane.clientHeight + OVERFLOW_SLACK_PX;
+}
+
 function initExpand() {
   const button = $("pane-expand");
   button.addEventListener("click", () => setExpanded(!isExpanded()));
@@ -399,6 +406,15 @@ function initExpand() {
     if (event.key === "Escape" && isExpanded() && !hasOpenDialog()) setExpanded(false);
   });
   on("lang", () => setExpanded(isExpanded()));
+
+  const checkOverflow = () => {
+    if (isExpanded()) return;
+    button.hidden = !paneScrolls();
+  };
+  setInterval(checkOverflow, OVERFLOW_POLL_MS);
+  addEventListener("resize", checkOverflow);
+  on("ui", () => requestAnimationFrame(checkOverflow));
+  checkOverflow();
 }
 
 function showToast({ text, tone = "neutral" }) {
