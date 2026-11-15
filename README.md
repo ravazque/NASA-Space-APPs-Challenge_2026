@@ -17,7 +17,8 @@ Entry for NASA Space Apps 2026, *Mars Surface Exploration Map*. ARIADNE is not a
 
 | | |
 |---|---|
-| **Browser** | [ravazque.github.io/NASA-Space-APPs-Challenge_2026](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/) (solo mode, add `?sim=storm_eva` for the dust-storm scenario) |
+| **Browser** | [Interactive demo](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/) (solo mode) |
+| **Dust-storm demo** | [Simulated crew, rover and dust storm](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/?sim=storm_eva) (speed up the clock at the top to reach the storm sooner) |
 | **Android** | [`ariadne-debug.apk`](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/download/apk-latest/ariadne-debug.apk), rebuilt by CI on every push to `main` |
 | **LAN, several devices** | `make up` on a laptop, then scan the QR it prints from phones on the same Wi-Fi |
 
@@ -133,7 +134,7 @@ MIT, see [`LICENSE`](LICENSE). Data and photos belong to their authors (credits 
 
 **ARIADNE** es una red de campo sin internet para un paseo espacial en Marte: por dónde caminar, si todavía podemos volver y qué hacer si llega una tormenta de polvo. Varios dispositivos comparten un mismo plan. Proyecto para el reto *Mars Surface Exploration Map* de NASA Space Apps 2026; no está afiliado ni respaldado por la NASA.
 
-- **Probarlo.** En el navegador: [demo en GitHub Pages](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/?lang=es). En Android: [descargar el APK](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/download/apk-latest/ariadne-debug.apk). En red local: `make up` en un portátil y escanear el QR desde los móviles.
+- **Probarlo.** En el navegador: [demo en GitHub Pages](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/?lang=es) o [demo con tormenta de polvo simulada](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/?sim=storm_eva&lang=es). En Android: [descargar el APK](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/download/apk-latest/ariadne-debug.apk). En red local: `make up` en un portátil y escanear el QR desde los móviles.
 - **Ruta.** Calcula la ruta de menor coste para un astronauta con traje a 0,38 g, evitando pendientes de más de 18°, arena suelta y rocas grandes, con un límite de retorno seguro que se reduce con el reloj de la EVA.
 - **Red de campo.** Un hub en la red local ordena las operaciones, gestiona bloqueos con arrendamiento y guarda un registro de campo compartido que recalcula la ruta de los demás. Si el hub cae, los dispositivos siguen funcionando y se ponen al día al volver.
 - **Entorno.** Reloj marciano Mars24 que reproduce un sol real medido por MEDA, 36 capas en 6 categorías y peligro de tormenta de polvo. Cada dato lleva su etiqueta de origen.
