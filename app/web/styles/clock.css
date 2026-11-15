@@ -20,8 +20,9 @@
 }
 @media (pointer: coarse), (max-width: 899px) { .clk-chip, .clk-btn, .clk-rate { min-height: var(--tap); } .clk-btn { min-width: var(--tap); } .clk-info { min-width: var(--tap); } }
 
+@media (max-width: 899px) { .clk-chip { width: auto; min-width: 15rem; } }
 @media (max-width: 600px) {
-  .clk-chip { order: 0; flex: 1 1 0; width: auto; min-width: 0; }
+  .clk-chip { order: 0; flex: 1 0 100%; width: auto; }
   .clk-btn { order: 1; }
   .clk-rate { order: 2; }
   .clk-cell { order: 3; }
@@ -57,7 +58,7 @@
 .clk-label { min-width: 0; }
 .clk-val { min-width: 9.5ch; text-align: right; font-weight: 600; white-space: nowrap; }
 .clk-tag { min-width: 5.5rem; }
-.clk-info { appearance: none; background: transparent; border: 0; width: var(--tap); height: var(--tap); font-size: var(--t-md); cursor: pointer; }
+.clk-info { appearance: none; display: grid; place-items: center; background: transparent; border: 0; width: var(--tap); height: var(--tap); font-size: var(--t-md); cursor: pointer; }
 .clk-info:hover { background: var(--ground-2); }
 .clk-note { grid-column: 1 / -1; padding: var(--s1) 0 var(--s2); font-size: var(--t-sm); color: var(--ink-2); }
 .clk-src { display: block; font-size: var(--t-xs); }

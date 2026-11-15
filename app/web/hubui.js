@@ -1,9 +1,9 @@
 import { state, set, on } from "./store.js";
 import { t, apply, shown } from "./i18n.js";
-import { $, esc, tag } from "./ui.js";
+import { $, esc, tag, ico } from "./ui.js";
 import { connect, disconnect, identify, hubNow } from "./sync.js";
 
-const GLYPH = { synced: "●", connecting: "◐", offline: "○", solo: "" };
+const GLYPH = { synced: "g-dot-on", connecting: "g-dot-half", offline: "g-dot-off", solo: "" };
 const KIND_ICON = { astronaut: "A", vehicle: "V", base: "B" };
 let map = null, dlg = null;
 
@@ -27,7 +27,7 @@ function renderChip() {
   const setText = (el, v) => { if (el.textContent !== v) el.textContent = v; };
   const title = t("hub.chip.title");
   if (b.title !== title) b.title = title;
-  glyph.hidden = !GLYPH[s]; setText(glyph, GLYPH[s]);
+  glyph.hidden = !GLYPH[s]; if (glyph.dataset.s !== s) { glyph.dataset.s = s; glyph.innerHTML = GLYPH[s] ? ico(GLYPH[s]) : ""; }
   setText(q(".word"), word); setText(q(".more"), more);
   msw.hidden = s !== "synced"; setText(msEl, ms);
   msEl.classList.toggle("slow", slow);

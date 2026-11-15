@@ -1,6 +1,6 @@
 import { state, set, on } from "./store.js";
-import { t, num, date, pick, getLang } from "./i18n.js";
-import { $ } from "./ui.js";
+import { t, num, date, pick, getLang, shown } from "./i18n.js";
+import { $, tag } from "./ui.js";
 import { submit } from "./sync.js";
 import { planningGrid, dijkstra, shortestPath, pathStats, evaTimeline, stateAt, turnaround, walkbackMask } from "./pathfind.js";
 import { PROFILES, passMask, routeEnergy, planPenalty, blockReason, limits } from "./profiles.js";
@@ -92,11 +92,21 @@ function evaSeconds() {
   return manualS ?? (P.route?.length ? Math.min(dur, Math.ceil(P.tl.tArr / 300) * 300) : 0);
 }
 
+function frontierMask(envMask, dist) {
+  const out = Uint8Array.from(envMask), known = Uint8Array.from(dist, (v) => (v === Infinity ? 0 : 1)), q = [];
+  for (let i = 0; i < known.length; i++) if (known[i]) q.push(i);
+  for (let n = 0; n < q.length; n++) {
+    const i = q[n], r = (i / cols) | 0, c = i % cols;
+    for (const j of [c > 0 ? i - 1 : -1, c + 1 < cols ? i + 1 : -1, r > 0 ? i - cols : -1, r + 1 < rows ? i + cols : -1]) if (j >= 0 && !known[j]) { known[j] = 1; out[j] = out[i]; q.push(j); }
+  }
+  return out;
+}
+
 function refresh(full) {
   if (!P.route) return;
   const evaS = evaSeconds(), f = footGrids(), here = P.tl ? stateAt(evaS, P.tl, P.route, habitat) : { cell: habitat, spent: 0 };
   const envMask = walkbackMask(f.home.dist, cfg.eva_energy_budget_j - here.spent, cfg.return_margin);
-  const envInside = envMask.map((v, i) => (v || f.home.dist[i] === Infinity ? 1 : 0));
+  const envInside = frontierMask(envMask, f.home.dist);
   const live = evaS <= P.turn.turnS && (cfg.eva_energy_budget_j - here.spent) * (1 - cfg.return_margin) >= f.home.dist[here.cell];
   const storm = state.env?.hazard?.level >= 2;
   const safe = storm ? "storm" : P.baseSafe === "ok" && !live ? "no" : P.baseSafe;
@@ -150,11 +160,16 @@ function renderPanels() {
     ed = t(over ? "energy.detail_over" : "energy.detail", { mj: num(spent / 1e6, 2), budget: num(B / 1e6, 2) });
   } else if (s === "storm") {
     value = t("safe.value.no"); detail = t("safe.detail.storm", { min: pl.homeMin == null ? "—" : duration(pl.homeMin) });
-    if (st) { rv = t("route.value", { km: num(st.lengthM / 1000, 2) }); rd = routeDetail(pl, st); }
+    if (st) { rv = t("route.value", { km: num(st.lengthM / 1000, 2) }); rd = routeDetail(pl, st); ev = t("energy.value", { pct: num((100 * spent) / B, 0) }); ed = t("energy.detail", { mj: num(spent / 1e6, 2), budget: num(B / 1e6, 2) }); }
   } else if (s === "forbidden") { detail = forbiddenText(pl); rd = t("route.none"); }
   else if (s === "unreachable") { detail = t("safe.detail.unreachable"); rd = t("route.none"); }
+  const hz = state.env?.hazard, stormTag = $("safe-tag");
+  if (s === "storm" && hz) detail = [t("clock.hz.line", { tau: num(hz.tau, 1), wind: num(hz.wind_ms, 0) }) + ".", hz.label ? shown(hz.label) : "", detail].filter(Boolean).join(" ");
+  stormTag.innerHTML = s === "storm" && hz ? tag(hz.tag) : "";
+  p.setAttribute("role", s === "storm" ? "alert" : "status");
   $("safe-value").textContent = value; $("safe-detail").textContent = detail;
   $("route-value").textContent = rv; $("route-detail").textContent = rd;
+  if (ev === "—" && !ed) ed = t(s === "pending" ? "energy.pending" : "energy.none");
   $("energy-value").textContent = ev; $("energy-detail").textContent = ed;
   $("energy-value").classList.toggle("over", over);
   const ep = $("energy-t").closest(".z535"); ep.dataset.tone = over ? "danger" : "neutral"; setUse($("energy-t").querySelector("svg"), over ? "g-prohibit" : null);

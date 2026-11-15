@@ -1,6 +1,6 @@
 import { state, set, on } from "./store.js";
 import { t, num, shown } from "./i18n.js";
-import { $, esc, tag } from "./ui.js";
+import { $, esc, tag, ico } from "./ui.js";
 import { mars, solToUtc, clockUtc, utcAtLs, fmtHM } from "./marsclock.js";
 import { loadEnv, resolveEnv, at } from "./env.js";
 import { submit, hubNow } from "./sync.js";
@@ -69,7 +69,8 @@ function renderBar() {
   txt("clk-time", t("clock.solltst", { sol: c.sol, hm: fmtHM(c.ltst) }));
   const ls = $("clk-ls"), lsTxt = t("clock.ls", { ls: num(c.ls, 0), season: season(c.season) });
   ls.innerHTML = `${esc(lsTxt)}<span class="clk-dust">${c.dustSeason ? ` · ${esc(t("clock.dust"))}` : ""}</span>`;
-  const sun = $("clk-sun"); sun.textContent = `${c.sunEl >= 0 ? "☼" : "☾"} ${num(c.sunEl, 0)}°`;
+  const sun = $("clk-sun"), sh = `${ico(c.sunEl >= 0 ? "g-solar" : "g-moon")} ${num(c.sunEl, 0)}°`;
+  if (sun.dataset.h !== sh) { sun.dataset.h = sh; sun.innerHTML = sh; }
   sun.title = t(c.sunEl >= 0 ? "clock.sun.up" : "clock.sun.down", { deg: num(Math.abs(c.sunEl), 0) });
   txt("clk-earth", t("clock.earth", { when: new Date(c.utcMs).toISOString().slice(0, 16).replace("T", " ") }));
   const play = $("clk-play"), live = ck.mode === "live";
@@ -170,7 +171,7 @@ function buildEnv() {
   pane.innerHTML = `<h2 class="clk-h">${esc(t("clock.env.title"))}</h2><p class="hint clk-source" id="env-source"></p>` +
     ROWS.map(([g, rows]) => `<section class="clk-group"><h3>${esc(t(`clock.g.${g}`))}</h3>${g === "met" ? `<figure class="clk-spark" id="env-spark"></figure>` : ""}<ul>` +
       rows.map(([k]) => `<li class="clk-r" data-k="${k}"><span class="clk-label">${esc(t(`clock.v.${k}`))}</span><span class="clk-val" id="ev-${k}">${dash}</span><span class="clk-tag" id="et-${k}"></span>` +
-        `<button type="button" class="clk-info" data-k="${k}" aria-expanded="${open.has(k)}" aria-controls="en-${k}" aria-label="${esc(t("clock.env.info", { name: t(`clock.v.${k}`) }))}">ⓘ</button>` +
+        `<button type="button" class="clk-info" data-k="${k}" aria-expanded="${open.has(k)}" aria-controls="en-${k}" aria-label="${esc(t("clock.env.info", { name: t(`clock.v.${k}`) }))}">${ico("g-info")}</button>` +
         `<div class="clk-note" id="en-${k}"${open.has(k) ? "" : " hidden"}></div></li>`).join("") + `</ul></section>`).join("");
   for (const b of pane.querySelectorAll(".clk-info")) b.addEventListener("click", () => {
     const k = b.dataset.k, on = !open.has(k);
@@ -222,7 +223,7 @@ function renderSpark(sol) {
 const TRI = `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 4L45 41H3Z" style="fill:var(--yellow);stroke:var(--ink)" stroke-width="3" stroke-linejoin="round"/><path d="M12 31q4-4 8 0t8 0 8 0M14 24q3-3 6 0t6 0 6 0" fill="none" style="stroke:var(--ink)" stroke-width="2.5"/></svg>`;
 function renderHazard() {
   const slot = $("hazard-slot"), hz = state.env?.hazard;
-  if (!hz || hz.level < 1) { if (slot.innerHTML) slot.innerHTML = ""; return; }
+  if (!hz || hz.level < 1 || hz.level >= 2) { if (slot.innerHTML) slot.innerHTML = ""; return; }
   const key = `${hz.level}|${hz.reasons.join()}|${hz.tag}|${hz.label ?? ""}`;
   if (slot.dataset.key !== key || !$("hz-val")) {
     slot.dataset.key = key;

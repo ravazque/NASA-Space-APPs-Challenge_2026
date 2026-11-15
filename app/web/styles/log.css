@@ -20,8 +20,7 @@
 
 .log-list { list-style: none; padding: 0; display: grid; gap: var(--s2); }
 .log-row { display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: var(--s2); padding: var(--s2) var(--s3); background: var(--surface);
-  border: var(--hair) solid var(--ink); border-left-width: 4px; }
-.log-row[data-sev="1"] { border-left-width: 2px; } .log-row[data-sev="3"] { border-left-width: 8px; }
+  border: var(--hair) solid var(--ink); }
 .lock-row { grid-template-columns: minmax(0, 1fr); }
 .log-row[data-provisional] { border-style: dashed; }
 .log-row[data-status="resolved"], .log-row[data-superseded] { color: var(--ink-2); background: var(--ground-2); }

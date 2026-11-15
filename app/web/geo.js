@@ -11,12 +11,12 @@ export function latLngToCell(lat, lng) {
 }
 export const bounds = () => [[deg(y0 - rows * cell), deg(x0)], [deg(y0), deg(x0 + cols * cell)]];
 
-export function maskSegments(mask) {
+export function maskSegments(mask, skip) {
   const out = [], ll = (r, c) => [deg(y0 - r * cell), deg(x0 + c * cell)];
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const i = r * cols + c;
-    if (c + 1 < cols && mask[i] !== mask[i + 1]) out.push([ll(r, c + 1), ll(r + 1, c + 1)]);
-    if (r + 1 < rows && mask[i] !== mask[i + cols]) out.push([ll(r + 1, c), ll(r + 1, c + 1)]);
+    if (c + 1 < cols && mask[i] !== mask[i + 1] && !(skip && (skip[i] || skip[i + 1]))) out.push([ll(r, c + 1), ll(r + 1, c + 1)]);
+    if (r + 1 < rows && mask[i] !== mask[i + cols] && !(skip && (skip[i] || skip[i + cols]))) out.push([ll(r + 1, c), ll(r + 1, c + 1)]);
   }
   return out;
 }

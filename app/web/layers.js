@@ -1,6 +1,6 @@
 import { state, set, on, emit } from "./store.js";
 import { t, num, pick, shown } from "./i18n.js";
-import { $, h, esc, tag } from "./ui.js";
+import { $, h, esc, tag, ico } from "./ui.js";
 import { PROFILES, prepareExtra, limits, passMask, hardMask, share } from "./profiles.js";
 import { stateAt } from "./pathfind.js";
 import { groundTempGrid } from "./env.js";
@@ -11,7 +11,7 @@ export const CATALOGUE = [
   { id: "route", cat: "nav", kind: "vector", tag: "DERIVED", file: "pathfind.js", unit: "m", legend: "route", map: ["plan:route"], on: true, fixed: true },
   { id: "envelope", cat: "nav", kind: "vector", tag: "DERIVED", file: "mission_config.json", unit: "", legend: "envelope", map: ["plan:envelope", "plan:outside"], on: true },
   { id: "return_points", cat: "nav", kind: "vector", tag: "DERIVED", file: "jezero_cost_grid.json", unit: "", legend: "refuge", map: ["layers:return", "layers:return-zone"], on: true },
-  { id: "passage", cat: "nav", kind: "vector", tag: "DERIVED", file: "profiles.js", unit: "", legend: "forbid", map: ["plan:forbid", "plan:forbid.edge"], on: true, profiles: true },
+  { id: "passage", cat: "nav", kind: "vector", tag: "DERIVED", file: "profiles.js", unit: "", legend: "passage", map: ["plan:forbid", "plan:forbid.edge"], on: true, profiles: true },
   { id: "hard", cat: "nav", kind: "vector", tag: "DERIVED", file: "terrain_extra.json", unit: "", legend: "hard", map: ["layers:hard"] },
   { id: "obstacles", cat: "nav", kind: "vector", tag: "DERIVED + REPORTED", file: "terrain_extra.json", unit: "", legend: "obst", map: ["layers:obstacles"], on: true },
   { id: "crew", cat: "nav", kind: "vector", tag: "REPORTED / SIMULATED", file: "LAN hub", unit: "", legend: "crew", map: ["hub:crew"], on: true },
@@ -21,7 +21,7 @@ export const CATALOGUE = [
   { id: "comms", cat: "nav", kind: "raster", tag: "DERIVED", file: "jezero_cost_grid.json", unit: "", legend: "ramp3" },
   { id: "traverse", cat: "nav", kind: "vector", tag: "MEASURED", file: "traverse_cells.json", unit: "", legend: "trav", map: ["layers:traverse"], on: true },
 
-  { id: "elevation", cat: "topo", kind: "raster", tag: "MEASURED → DERIVED", file: "jezero_cost_grid.json", unit: "m", legend: "ramp", grid: "elevation_m", dp: 0 },
+  { id: "elevation", cat: "topo", kind: "raster", tag: "MEASURED + DERIVED", file: "jezero_cost_grid.json", unit: "m", legend: "ramp", grid: "elevation_m", dp: 0 },
   { id: "slope", cat: "topo", kind: "raster", tag: "DERIVED", file: "jezero_cost_grid.json", unit: "°", legend: "ramp", grid: "slope_deg", dp: 1 },
   { id: "relief", cat: "topo", kind: "raster", tag: "DERIVED", file: "jezero_cost_grid.json", unit: "", legend: "relief" },
   { id: "roughness", cat: "topo", kind: "raster", tag: "DERIVED", file: "terrain_extra.json", unit: "m", legend: "ramp", dp: 2 },
@@ -121,6 +121,7 @@ const GLYPH = {
   envelope: svg('<path d="M0 6H24" style="stroke:var(--ground)" stroke-width="5.5"/><path d="M0 6H24" style="stroke:var(--green)" stroke-width="2.5"/>'),
   refuge: `<svg class="lg sign" viewBox="0 0 48 48" aria-hidden="true"><use href="#s-refuge"/></svg>`,
   forbid: svg('<rect width="24" height="12" style="fill:var(--ground);fill-opacity:.4"/><path d="M-2 12L10 0M5 12L17 0M12 12L24 0M19 12L31 0" style="stroke:var(--red)" stroke-width="2"/><rect x=".5" y=".5" width="23" height="11" fill="none" style="stroke:var(--red)"/>'),
+  passage: svg('<path d="M-2 12L10 0M5 12L17 0M12 12L24 0M19 12L31 0" style="stroke:var(--ink)" stroke-width="1"/><rect x=".5" y=".5" width="23" height="11" fill="none" style="stroke:var(--ink)" stroke-dasharray="4 2"/>'),
   hard: svg('<path d="M-2 12L10 0M8 12L20 0M18 12L30 0" style="stroke:var(--ink)" stroke-width="1"/>'),
   dots: svg('<circle cx="4" cy="3" r="1.3" style="fill:var(--ink)"/><circle cx="12" cy="8" r="1.3" style="fill:var(--ink)"/><circle cx="20" cy="3" r="1.3" style="fill:var(--ink)"/>'),
   obst: svg('<rect x="1" y="1" width="22" height="10" style="fill:none;stroke:var(--ink)" stroke-width="1.25"/>'),
@@ -214,12 +215,17 @@ function buildVectors() {
     map.pattern("layers:hard", hardM, { kind: "hatch-ink" });
     map.pattern("layers:rocks", extra.rocks, { kind: "dots-ink" });
     map.outline("layers:obstacles", extra.rocks, { token: "--ink", width: 1, halo: false });
-    map.markers("layers:craters", extra.craters.map((c) => ({ cell: c.cell, kind: "crater", radius_m: c.diam_m / 2, label: c.diam_m >= 100 ? `Ø ${num(c.diam_m, 0)} m` : undefined, optional: true, sub: c.diam_m >= 100 ? `↓ ${num(c.depth_m, 1)} m` : undefined })));
+    map.markers("layers:craters", extra.craters.map((c) => ({ cell: c.cell, kind: "crater", radius_m: c.diam_m / 2, label: c.diam_m >= 100 ? `Ø ${num(c.diam_m, 0)} m` : undefined, optional: true, sub: c.diam_m >= 100 ? t("layers.depth", { m: num(c.depth_m, 1) }) : undefined })));
   }
-  map.outline("layers:return-zone", shieldedMask(), { token: "--green", width: 1.25, halo: false });
+  drawReturnZone();
   if (d.traverse?.length > 1) map.lines("layers:traverse", [d.traverse], { token: "--ink", width: 1.5, halo: true, dash: [4, 4], opacity: 0.6, cap: "butt" });
   buildGeo();
   buildMarkers();
+}
+let zoneForbid = null;
+function drawReturnZone() {
+  zoneForbid = state.plan?.forbid ?? null;
+  map.outline("layers:return-zone", shieldedMask(), { token: "--green", width: 1.25, halo: false, skip: zoneForbid });
 }
 function shieldedMask() {
   const sv = Float32Array.from(d.layers.svf).sort(), lim = sv[Math.floor(sv.length * 0.05)];
@@ -347,7 +353,7 @@ function row(it) {
     head.append(lab);
   } else head.append(h("span", "lsel static", `${g}<span class="lname">${nm}</span>`));
   head.append(h("span", "ltags", tagsHtml(it.tag)));
-  const info = h("button", "linfo", "ⓘ");
+  const info = h("button", "linfo", ico("g-info"));
   info.type = "button"; info.setAttribute("aria-label", t("layers.info", { name: nameOf(it.id) })); info.setAttribute("aria-controls", `cap-${it.id}`);
   info.setAttribute("aria-expanded", String(infoOpen.has(it.id)));
   info.addEventListener("click", () => { infoOpen.has(it.id) ? infoOpen.delete(it.id) : infoOpen.add(it.id); info.setAttribute("aria-expanded", String(infoOpen.has(it.id))); cap.hidden = !infoOpen.has(it.id); });
@@ -358,7 +364,6 @@ function row(it) {
     v.addEventListener("click", () => { set("ui", { tab: "env" }); if (matchMedia("(max-width: 899px)").matches) set("ui", { drawer: false }); });
     li.append(v);
   }
-  if (it.profiles) { const pc = h("div", "prof in-drawer"); pc.append(profileControl()); li.append(pc); }
   const cap = h("div", "lcap");
   cap.id = `cap-${it.id}`; cap.hidden = !infoOpen.has(it.id);
   cap.innerHTML = `<p>${esc(t(`layers.cap.${it.id}`))}</p><p class="lmeta"><b>${esc(t("layers.source"))}:</b> ${esc(t(`layers.src.${it.id}`))}</p>`
@@ -477,7 +482,8 @@ export async function init(c) {
   on("clock", () => { renderValues(); refreshRaster(); });
   on("lang", () => { renderStrip(); buildDrawer(); buildMarkers(); });
   let route0 = null, spe0 = null;
-  on("plan", (pl) => { if (pl.route !== route0 || pl.spe !== spe0) { route0 = pl.route; spe0 = pl.spe; renderValues(); }
+  on("plan", (pl) => { if (pl.forbid !== zoneForbid && map) drawReturnZone();
+    if (pl.route !== route0 || pl.spe !== spe0) { route0 = pl.route; spe0 = pl.spe; renderValues(); }
     if (pl.turn !== turnPl?.turn || pl.route !== turnPl?.route) { turnPl = pl; drawTurn(); } });
   $("layers-drawer").addEventListener("keydown", (e) => { if (e.key === "Escape") { set("ui", { drawer: false }); $("layers-open")?.focus(); } });
 }

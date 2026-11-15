@@ -1,6 +1,6 @@
 import { state, set, on, emit } from "./store.js";
 import { t, num } from "./i18n.js";
-import { $, esc } from "./ui.js";
+import { $, esc, ico } from "./ui.js";
 import { setGoal } from "./plan.js";
 import { setGrid, cellToLatLng, latLngToCell, bounds, maskSegments, metersPerPx } from "./geo.js";
 
@@ -135,7 +135,7 @@ const SYM = {
   crater: S(`<circle cx="12" cy="12" r="9" fill="none" stroke="var(--ground)" stroke-width="5"/><circle cx="12" cy="12" r="9" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray="4 2.5"/>`),
   wind: S(`<path d="M12 1.5L19 13H14.5V22.5H9.5V13H5Z" ${G}/><path d="M12 3.8L16.6 11.5H13.2V20.5H10.8V11.5H7.4Z" ${INK}/>`),
 };
-const ZK = { me: 9, dest: 8, start: 7, refuge: 7, storm: 6, hazard: 6 };
+const ZK = { me: 9, dest: 8, start: 7, refuge: 7, storm: 6, hazard: 6, wind: 3 };
 
 function symbolMarker(it) {
   const live = !!(it.id || it.onClick), sel = state.ui.selected, isSel = sel && sel.kind === it.kind && sel.id === (it.id ?? null);
@@ -148,7 +148,7 @@ function symbolMarker(it) {
   return m;
 }
 function plateMarker(it) {
-  const html = `<div class="plate${it.optional ? " opt" : ""}${it.dy ? " dy" : ""}" style="margin-top:${Number(it.dy) || 0}px"><b>${esc(it.label)}</b>${it.sub ? `<span>${esc(it.sub)}</span>` : ""}</div>`;
+  const pr = (ZK[it.kind] ?? 5) - (it.optional ? 3 : 0), html = `<div class="plate${it.optional ? " opt" : ""}${it.dy ? " dy" : ""}" data-p="${pr}" style="margin-top:${Number(it.dy) || 0}px"><b>${esc(it.label)}</b>${it.sub ? `<span>${esc(it.sub)}</span>` : ""}</div>`;
   return L.marker(cellToLatLng(it.cell), { pane: "plates", icon: L.divIcon({ className: "plate-wrap", html, iconSize: [0, 0] }), interactive: false, keyboard: false, zIndexOffset: (ZK[it.kind] ?? 5) * 1000 });
 }
 function ring(it) {
@@ -179,13 +179,24 @@ function markers(id, list) {
 }
 let dq; const declutter = () => { cancelAnimationFrame(dq); dq = requestAnimationFrame(placePlates); };
 function placePlates() {
-  const H = host.getBoundingClientRect(), all = [...host.querySelectorAll(".plate")], placed = [];
-  all.forEach((p) => p.classList.remove("hide", "flip"));
-  const hit = (a) => placed.some((b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top);
-  for (const p of [...all.filter((e) => !e.classList.contains("opt")), ...all.filter((e) => e.classList.contains("opt"))]) {
-    let r = p.getBoundingClientRect();
-    if (r.right > H.right - 4) { p.classList.add("flip"); r = p.getBoundingClientRect(); }
-    if (p.classList.contains("opt") && hit(r)) p.classList.add("hide"); else placed.push(r);
+  const H = host.getBoundingClientRect(), all = [...host.querySelectorAll(".plate")], placed = [], R = (e) => e.getBoundingClientRect();
+  const stage = host.closest(".map-stage") ?? host.parentElement;
+  const fixed = [...stage.querySelectorAll(".map-tools .tool, .map-scale, .map-readout, .leaflet-control-attribution, .map-note:not([hidden]), .map-pick:not([hidden])")].map(R);
+  const syms = [...host.querySelectorAll(".mk .sym")].map((e) => { const r = R(e); return { r, cx: (r.left + r.right) / 2, cy: (r.top + r.bottom) / 2 }; });
+  const hit = (a, list) => list.some((b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top);
+  const fits = (r) => r.left >= H.left + 2 && r.right <= H.right - 2 && r.top >= H.top + 2 && r.bottom <= H.bottom - 2;
+  all.forEach((p) => p.classList.remove("hide", "flip", "dn", "up"));
+  const order = all.map((p, i) => [p, i]).sort((a, b) => (+b[0].dataset.p || 0) - (+a[0].dataset.p || 0) || a[1] - b[1]).map((x) => x[0]);
+  for (const p of order) {
+    const o = p.parentElement.getBoundingClientRect(), g = p.classList.contains("g");
+    const block = [...fixed, ...syms.filter((s) => Math.hypot(s.cx - o.left, s.cy - o.top) > 3).map((s) => s.r)];
+    const ok = (r) => fits(r) && !hit(r, placed) && !hit(r, block);
+    let good = false;
+    for (const pos of g ? [[]] : [[], ["flip"], ["dn"], ["up"], ["flip", "dn"], ["flip", "up"]]) {
+      p.classList.remove("flip", "dn", "up"); p.classList.add(...pos);
+      if ((good = ok(R(p)))) break;
+    }
+    if (good) placed.push(R(p)); else { p.classList.remove("flip", "dn", "up"); p.classList.add("hide"); }
   }
 }
 
@@ -213,16 +224,16 @@ function renderPick() {
 function corner(pos, cls) { const c = L.control({ position: pos }); let el; c.onAdd = () => { el = L.DomUtil.create("div", cls); L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); return el; }; c.addTo(map); return el; }
 let scaleEl, readEl, gratEl, noteEl, hover = false;
 function drawScale() {
-  const mpp = metersPerPx(map.getZoom()), L1 = [5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000].find((n) => n / mpp >= 72) ?? 5000, w = L1 / mpp, lab = (m) => (m >= 1000 ? `${num(m / 1000, 0)} km` : `${num(m, 0)} m`);
-  scaleEl.innerHTML = `<div class="sc-row"><div class="sc-bar" style="width:${w}px">${[0, 1, 2, 3].map((i) => `<i${i % 2 ? "" : ' class="k"'}></i>`).join("")}</div><div class="sc-n" aria-hidden="true"><b>▲</b>${esc(t("scale.north"))}</div></div>`
-    + `<div class="sc-lab" style="width:${w}px"><span>0</span><span>${lab(L1 / 2)}</span><span>${lab(L1)}</span></div><div class="sc-cap">${esc(t("scale.cell", { m: num(data.cellM, 0) }))}</div>`;
+  const mpp = metersPerPx(map.getZoom()), L1 = [5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000].find((n) => n / mpp >= 110) ?? 5000, w = L1 / mpp, lab = (m) => (m >= 1000 ? `${num(m / 1000, 0)} km` : `${num(m, 0)} m`);
+  scaleEl.innerHTML = `<div class="sc-row"><div class="sc-bar" style="width:${w}px">${[0, 1, 2, 3].map((i) => `<i${i % 2 ? "" : ' class="k"'}></i>`).join("")}</div><div class="sc-n" aria-hidden="true"><b>${ico("g-north")}</b>${esc(t("scale.north"))}</div></div>`
+    + `<div class="sc-lab" style="min-width:${w}px"><span>0</span><span>${lab(L1 / 2)}</span><span>${lab(L1)}</span></div><div class="sc-cap">${esc(t("scale.cell", { m: num(data.cellM, 0) }))}</div>`;
 }
 function drawReadout(ll) {
   const c = ll ?? map.getCenter(), cell = latLngToCell(c.lat, c.lng);
   readEl.textContent = [t("grat.lon", { v: num(c.lng, 4) }), t("grat.lat", { v: num(c.lat, 4) }), cell >= 0 ? t("map.cell", { r: Math.floor(cell / cols), c: cell % cols }) : t("map.outside")].join(" · ");
 }
 const GSTEPS = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1];
-const gstep = (zoom) => GSTEPS.find((s) => (s * DEG_M) / metersPerPx(zoom) >= 96) ?? 0.1;
+const gstep = (zoom) => GSTEPS.find((s) => (s * DEG_M) / metersPerPx(zoom) >= (map.getSize().x < 600 ? 64 : 96)) ?? 0.1;
 const GratLayer = L.GridLayer.extend({
   createTile(co) {
     const m = this._map, z = co.z, d = Math.min(2, devicePixelRatio || 1), el = document.createElement("canvas"), x = el.getContext("2d"), size = this.getTileSize().x, st = gstep(z);
@@ -236,13 +247,13 @@ const GratLayer = L.GridLayer.extend({
   },
 });
 function drawGrat() {
-  const sz = map.getSize(), st = gstep(map.getZoom()), b = map.getBounds(), every = sz.x < 600 ? 2 : 1, out = [];
+  const sz = map.getSize(), st = gstep(map.getZoom()), b = map.getBounds(), every = 1, out = [];
   const dec = st < 0.01 ? 3 : 2;
   for (let v = Math.ceil(b.getWest() / st) * st, n = 0; v <= b.getEast(); v += st, n++) {
-    const x = map.latLngToContainerPoint([b.getNorth(), v]).x; if (x > 40 && x < sz.x - 40 && n % every === 0) out.push(`<span class="plate opt g" style="left:${x}px;top:6px;transform:translateX(-50%)">${esc(t("grat.lon", { v: num(v, dec) }))}</span>`);
+    const x = map.latLngToContainerPoint([b.getNorth(), v]).x; if (x > 40 && x < sz.x - 40 && n % every === 0) out.push(`<span class="plate opt g" data-p="0" style="left:${x}px;top:6px;transform:translateX(-50%)">${esc(t("grat.lon", { v: num(v, dec) }))}</span>`);
   }
   for (let v = Math.ceil(b.getSouth() / st) * st, n = 0; v <= b.getNorth(); v += st, n++) {
-    const y = map.latLngToContainerPoint([v, b.getWest()]).y; if (y > 40 && y < sz.y - 90 && n % every === 0) out.push(`<span class="plate opt g" style="left:6px;top:${y}px;transform:translateY(-50%)">${esc(t("grat.lat", { v: num(v, dec) }))}</span>`);
+    const y = map.latLngToContainerPoint([v, b.getWest()]).y; if (y > 40 && y < sz.y - 90 && n % every === 0) out.push(`<span class="plate opt g" data-p="0" style="left:6px;top:${y}px;transform:translateY(-50%)">${esc(t("grat.lat", { v: num(v, dec) }))}</span>`);
   }
   gratEl.innerHTML = out.join(""); declutter();
 }
@@ -329,7 +340,7 @@ const api = {
   },
   outline(id, mask, o = {}) {
     if (!mask) return put(id, null);
-    const polys = chain(maskSegments(mask));
+    const polys = chain(maskSegments(mask, o.skip));
     strokes(id, polys, "outline", { token: "--green", width: 2.5, halo: true, join: "miter", cap: "square", ...o });
     const r = items.get(id); if (r) r.polys = polys;
   },
@@ -349,6 +360,7 @@ const api = {
   },
   cellToPoint(cell) { const p = map.latLngToContainerPoint(cellToLatLng(cell)); return { x: p.x, y: p.y }; },
   get el() { return host; },
+  get leaflet() { return map; },
 };
 
 const ARROW = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
@@ -369,13 +381,21 @@ function buildTools() {
   tool("report", svg("report"), "map.report", () => emit("map:report"));
   return lb;
 }
-const fit = () => { map.fitBounds(B, { padding: [12, 12], animate: false }); };
+const TILE_DEG = 180 / 2 ** 13;
+let TB;
+const insideZoom = () => map.getBoundsZoom(TB, true);
+function limits() { map.setMinZoom(Math.max(9, insideZoom() - 0.5)); }
+function fit() {
+  const z = insideZoom();
+  map.setView(map.getBoundsZoom(B) >= z ? L.latLngBounds(B).getCenter() : cellToLatLng(data.habitat), z, { animate: false });
+}
 
 export async function init(c) {
   if (!L) throw new Error("Leaflet (vendor/leaflet/leaflet.js) is not loaded");
   data = c.data; ({ rows, cols } = data);
   setGrid(data.meta); B = bounds(); host = $("map");
-  map = L.map(host, { crs: L.CRS.EPSG4326, minZoom: 9, maxZoom: 19, zoomSnap: 0.25, maxBounds: L.latLngBounds(B).pad(0.25), maxBoundsViscosity: 0.9, preferCanvas: true,
+  TB = [[Math.floor((B[0][0] - 0.005) / TILE_DEG) * TILE_DEG, Math.floor((B[0][1] - 0.005) / TILE_DEG) * TILE_DEG], [Math.ceil((B[1][0] + 0.005) / TILE_DEG) * TILE_DEG, Math.ceil((B[1][1] + 0.005) / TILE_DEG) * TILE_DEG]];
+  map = L.map(host, { crs: L.CRS.EPSG4326, minZoom: 9, maxZoom: 19, zoomSnap: 0.25, maxBounds: TB, maxBoundsViscosity: 1, preferCanvas: true,
     zoomControl: false, attributionControl: false, doubleClickZoom: false, wheelPxPerZoomLevel: 90 });
   for (const [n, z] of Object.entries(PANES)) map.createPane(n).style.zIndex = z;
 
@@ -396,9 +416,10 @@ export async function init(c) {
   L.DomEvent.disableClickPropagation(pickBox);
 
   const layersBtn = buildTools();
-  let fitted = false;
-  const fitOnce = () => { if (fitted || !host.clientWidth || !host.clientHeight) return; fitted = true; map.invalidateSize({ pan: false }); fit(); map.setMinZoom(Math.max(9, Math.min(11, map.getBoundsZoom(B) - 0.25))); };
-  let rz; new ResizeObserver(() => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { if (!fitted) return fitOnce(); map.invalidateSize({ pan: false }); map.setMinZoom(Math.max(9, Math.min(11, map.getBoundsZoom(B) - 0.25))); }); }).observe(host);
+  let fitted = false, touched = false;
+  for (const ev of ["wheel", "pointerdown", "keydown"]) host.addEventListener(ev, () => { touched = true; }, { passive: true });
+  const fitOnce = () => { if (fitted || !host.clientWidth || !host.clientHeight) return; fitted = true; map.invalidateSize({ pan: false }); fit(); limits(); };
+  let rz; new ResizeObserver(() => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { if (!fitted) return fitOnce(); map.invalidateSize({ pan: false }); if (!touched) fit(); limits(); }); }).observe(host);
   map.setView(L.latLngBounds(B).getCenter(), 12, { animate: false }); fitOnce();
 
   map.on("click", (e) => {

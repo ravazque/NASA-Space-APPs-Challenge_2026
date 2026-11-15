@@ -26,6 +26,12 @@
     <symbol id="g-return" viewBox="0 0 24 24"><path d="M15 17V9.5a3.5 3.5 0 0 0-7 0V11" fill="none" stroke="currentColor" stroke-width="2.25"/><path d="M5 11H11L8 15.5Z" fill="currentColor"/></symbol>
     <symbol id="g-prohibit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2.25"/><path d="M6 6L18 18" stroke="currentColor" stroke-width="2.25"/></symbol>
     <symbol id="g-route" viewBox="0 0 24 24"><path d="M6.5 18V12H15" fill="none" stroke="currentColor" stroke-width="2.25"/><path d="M14 8L19 12L14 16Z" fill="currentColor"/></symbol>
+    <symbol id="g-moon" viewBox="0 0 24 24"><path d="M15 4A8.5 8.5 0 1 0 20 15.5 7 7 0 0 1 15 4Z" fill="currentColor"/></symbol>
+    <symbol id="g-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2.25"/><path d="M12 11V16.5" stroke="currentColor" stroke-width="2.25"/><circle cx="12" cy="7.9" r="1.5" fill="currentColor"/></symbol>
+    <symbol id="g-dot-on" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="currentColor"/></symbol>
+    <symbol id="g-dot-half" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2.25"/><path d="M12 5A7 7 0 0 1 12 19Z" fill="currentColor"/></symbol>
+    <symbol id="g-dot-off" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2.25"/></symbol>
+    <symbol id="g-north" viewBox="0 0 24 24"><path d="M12 3L18.5 20L12 16L5.5 20Z" fill="currentColor"/></symbol>
     <symbol id="g-solar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5" fill="currentColor"/><path d="M17.5 12H20M6.5 12H4M12 17.5V20M12 6.5V4M15.9 15.9L17.66 17.66M8.1 15.9L6.34 17.66M8.1 8.1L6.34 6.34M15.9 8.1L17.66 6.34" stroke="currentColor" stroke-width="2"/></symbol>
   </svg>
 
@@ -116,7 +122,7 @@
       <section id="safe" class="z535" data-tone="pending" role="status" aria-live="polite" aria-labelledby="safe-t">
         <div class="symbol"><svg aria-hidden="true"><use/></svg></div>
         <h2 class="band" id="safe-t"><svg class="glyph" aria-hidden="true"><use/></svg><span id="safe-title">Computing</span></h2>
-        <div class="body"><span class="value" id="safe-value">—</span><p class="detail" id="safe-detail"></p></div>
+        <div class="body"><span class="value" id="safe-value">—</span> <span id="safe-tag"></span><p class="detail" id="safe-detail"></p></div>
       </section>
 
       <div class="pair">
@@ -127,6 +133,20 @@
         <section class="z535" data-tone="neutral" aria-labelledby="energy-t">
           <h2 class="band" id="energy-t"><svg class="glyph" aria-hidden="true"><use/></svg><span data-i18n="energy.title">Energy</span></h2>
           <div class="body"><span class="value" id="energy-value">—</span><p class="detail" id="energy-detail"></p></div>
+        </section>
+      </div>
+      <div class="spe-zone">
+        <button id="spe" type="button" class="spe" aria-pressed="false" aria-describedby="spe-sub">
+          <svg aria-hidden="true"><use href="#s-solar"/></svg>
+          <span class="spe-label" id="spe-label" data-i18n="spe.button">Simulate solar storm</span>
+          <span class="spe-sub" id="spe-sub" data-i18n="spe.sub">SPE · real May 2024 storm</span>
+        </button>
+      </div>
+      <div class="spe-slot">
+        <section id="spe-panel" class="z535" data-tone="warning" role="alert" aria-labelledby="spe-t" hidden>
+          <div class="symbol"><svg aria-hidden="true"><use href="#s-solar"/></svg></div>
+          <h2 class="band" id="spe-t"><svg class="glyph" aria-hidden="true"><use href="#g-solar"/></svg><span data-i18n="spe.title">Warning · solar storm</span></h2>
+          <div class="body" id="spe-body"></div>
         </section>
       </div>
       <div class="eva">
@@ -144,20 +164,6 @@
         <div class="slider"><label for="w-science" data-i18n="prio.science">Seek science</label><input type="range" id="w-science" min="0" max="5" step="0.1" value="1"><output for="w-science" id="w-science-out">1.0</output></div>
       </fieldset>
 
-      <div class="spe-zone">
-        <button id="spe" type="button" class="spe" aria-pressed="false" aria-describedby="spe-sub">
-          <svg aria-hidden="true"><use href="#s-solar"/></svg>
-          <span class="spe-label" id="spe-label" data-i18n="spe.button">Simulate solar storm</span>
-          <span class="spe-sub" id="spe-sub" data-i18n="spe.sub">SPE · real May 2024 storm</span>
-        </button>
-      </div>
-      <div class="spe-slot">
-        <section id="spe-panel" class="z535" data-tone="warning" role="alert" aria-labelledby="spe-t" hidden>
-          <div class="symbol"><svg aria-hidden="true"><use href="#s-solar"/></svg></div>
-          <h2 class="band" id="spe-t"><svg class="glyph" aria-hidden="true"><use href="#g-solar"/></svg><span data-i18n="spe.title">Warning · solar storm</span></h2>
-          <div class="body" id="spe-body"></div>
-        </section>
-      </div>
       </section>
       <section id="pane-env" class="pane" role="tabpanel" aria-labelledby="tab-env" hidden></section>
       <section id="pane-log" class="pane" role="tabpanel" aria-labelledby="tab-log" hidden></section>

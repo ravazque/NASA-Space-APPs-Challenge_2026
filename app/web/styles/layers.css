@@ -50,13 +50,12 @@
 .lname { min-width: 0; overflow-wrap: anywhere; }
 .ltags { grid-column: 1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1); padding: 0 0 var(--s1) calc(1.125rem + 1.5rem + 2 * var(--s2)); min-height: 0; }
 .ltags:empty { display: none; }
-.linfo { grid-column: 2; grid-row: 1; appearance: none; width: 2.25rem; height: 2.25rem; border: 0; background: transparent; font: 400 1.125rem/1 var(--font); cursor: pointer; }
+.linfo { grid-column: 2; grid-row: 1; display: grid; place-items: center; appearance: none; width: 2.25rem; height: 2.25rem; border: 0; background: transparent; font: 400 1.125rem/1 var(--font); cursor: pointer; }
 .linfo:hover { background: var(--ground-2); }
 .linfo[aria-expanded="true"] { background: var(--ink); color: var(--ground); }
 .lval { grid-column: 1 / -1; appearance: none; display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2); min-height: 2rem; margin: 0 0 var(--s1); padding: 0 var(--s2); border: var(--hair) solid var(--ink); background: var(--surface); text-align: left; cursor: pointer; }
 .lval:hover { background: var(--ground-2); }
 .lval .num { font-weight: 700; min-width: 6ch; }
-.lrow .prof.in-drawer { grid-column: 1 / -1; padding: 0 0 var(--s2); }
 .lcap { grid-column: 1 / -1; padding: var(--s1) 0 var(--s3); font-size: var(--t-sm); display: grid; gap: var(--s1); }
 .lcap .lmeta { font-size: var(--t-xs); color: var(--ink-2); }
 .lcap .lmeta b { color: var(--ink); }

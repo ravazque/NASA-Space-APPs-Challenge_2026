@@ -1,7 +1,8 @@
 .sync-chip .chip { appearance: none; display: inline-flex; align-items: center; gap: var(--s2); min-height: 2rem; padding: 0 var(--s3); border: var(--hair) solid var(--ink); background: transparent; color: var(--ink);
   font: 600 var(--t-sm)/1 var(--font); letter-spacing: .04em; white-space: nowrap; cursor: pointer; }
 .sync-chip .chip:hover { background: var(--ground-2); }
-.sync-chip .chip .glyph { font-size: var(--t-md); line-height: 1; }
+.sync-chip .chip .glyph { display: inline-flex; line-height: 1; }
+.sync-chip .chip .glyph[hidden] { display: none; }
 .sync-chip .chip .ms { display: inline-block; min-width: 4.25ch; text-align: right; font-weight: 400; }
 .sync-chip .chip .ms.slow { font-weight: 800; }
 .sync-chip .chip-connecting, .sync-chip .chip-offline { background: var(--yellow); }
@@ -13,8 +14,7 @@
 .hub-form { display: grid; gap: var(--s4); }
 .hub-form h2 { font: 700 var(--t-lg)/1.15 var(--font); letter-spacing: .04em; }
 .hub-form h3 { font: 700 var(--t-band)/1.2 var(--font); letter-spacing: .04em; margin-bottom: var(--s2); }
-.hub-status { padding: var(--s2) var(--s3); border: var(--hair) solid var(--ink); border-left-width: .5rem; font-weight: 600; min-height: 3.25rem; }
-.hub-status[data-state="connecting"], .hub-status[data-state="offline"] { border-left-color: var(--yellow); }
+.hub-status { padding: var(--s2) var(--s3); border: var(--hair) solid var(--ink); font-weight: 600; min-height: 3.25rem; }
 .hub-form fieldset { display: grid; gap: var(--s3); padding: var(--s3); border: var(--hair) solid var(--ink); min-width: 0; }
 .hub-form legend { padding-inline: var(--s2); font-weight: 700; letter-spacing: .04em; }
 .hub-form label { display: grid; gap: var(--s1); font-weight: 600; }
@@ -30,6 +30,7 @@
 .hub-peers li { display: grid; grid-template-columns: 1.25rem minmax(0, 1fr) auto; align-items: center; gap: var(--s2); min-height: 2.25rem; border-bottom: var(--hair) solid var(--ink-3); font-size: var(--t-sm); }
 .hub-peers .who { font-weight: 700; }
 .hub-peers .off { color: var(--ink-2); font-style: italic; }
+.hub-peers li:has(.none) { display: block; }
 .hub-peers .none { display: block; padding: var(--s2) 0; color: var(--ink-2); }
 
 @media (pointer: coarse), (max-width: 899px) {
