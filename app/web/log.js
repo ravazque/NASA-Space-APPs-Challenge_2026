@@ -254,7 +254,7 @@ function cellText(cell) {
   return t("log.cell", { r: Math.floor(cell / cols), c: cell % cols }) + latLng;
 }
 
-function nextId() {
+export function nextId() {
   const key = `ariadne.log.n.${me().deviceId}`;
   let n;
   try {

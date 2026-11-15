@@ -44,6 +44,9 @@
     </svg><span class="descriptor" data-i18n="brand.descriptor">EVA planner · Mars</span></h1>
     <div id="clock-bar" class="clock-bar"></div>
     <div id="sync-chip" class="sync-chip"></div>
+    <div class="lang mode" role="group" data-i18n-aria="mode.group" aria-label="View">
+      <button type="button" data-view="plan" aria-pressed="true"><span class="short" data-i18n="mode.plan_short">PLAN</span><span class="long" data-i18n="mode.plan">Plan route</span></button><button type="button" data-view="status" aria-pressed="false"><span class="short" data-i18n="mode.status_short">STATUS</span><span class="long" data-i18n="mode.status">Live status</span></button>
+    </div>
     <div class="lang" role="group" data-i18n-aria="lang.group" aria-label="Language">
       <button type="button" data-lang="en" aria-pressed="true" lang="en" data-i18n-aria="lang.en_name" aria-label="English"><span class="short">EN</span><span class="long">English</span></button><button type="button" data-lang="es" aria-pressed="false" lang="es" data-i18n-aria="lang.es_name" aria-label="Español"><span class="short">ES</span><span class="long">Español</span></button>
     </div>
@@ -52,6 +55,13 @@
   <div id="alert-bar" class="alert-bar" data-tone="warning" hidden><span id="alert-sr" class="sr" role="alert"></span>
     <b id="alert-sig" class="ab-sig" aria-hidden="true"></b><span id="alert-line" class="ab-line" aria-hidden="true"></span><button type="button" id="alert-show" class="ab-show"></button></div>
 
+  <div id="guide-bar" class="guide-bar" hidden>
+    <div class="gb-item"><span class="gb-k" data-i18n="guide.to_dest">To destination</span><b id="gb-dest">—</b></div>
+    <div class="gb-item" id="gb-safe-box" data-tone="pending"><span class="gb-k" id="gb-safe-k"></span><b id="gb-safe">—</b></div>
+    <button type="button" id="guide-exit" class="gb-exit" data-i18n-aria="guide.exit" aria-label="Exit guide mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="2.5"/></svg></button>
+  </div>
+
+  <nav class="page-bar" aria-label="Page"><a href="#" class="text-btn" data-i18n="page.back">Back to the console</a></nav>
   <main class="console" aria-busy="true">
     <div class="col">
     <section class="map-col" aria-labelledby="map-t">
@@ -64,9 +74,12 @@
           <div class="body"><p id="err-body" class="detail"></p></div>
         </section>
         <div id="map-tools" class="map-tools"></div>
+        <details id="info-card" class="info-card"><summary id="info-sum">Now</summary><dl id="info-body"></dl></details>
         <aside id="layers-drawer" class="layers-drawer" hidden></aside>
       </div>
 
+      <p id="now-line" class="now-line" aria-live="off"></p>
+      <div class="under-row">
       <div id="legend-strip" class="map-strip">
         <div class="strip-a">
           <label class="layer-pick"><span data-i18n="layer.label">Layer</span>
@@ -98,10 +111,7 @@
           <li data-only="refuge" hidden><svg class="lg sign" viewBox="0 0 48 48" aria-hidden="true"><use href="#s-refuge"/></svg><span data-lg="refuge">Refuge</span></li>
         </ul>
       </div>
-      <div class="strip-c">
-        <p id="hint" class="hint">Click the map: new destination · Arrows: 20 m · Shift + arrows: 200 m</p>
-        <a href="#destino" id="why" class="text-btn" data-i18n="map.why">Why Cheyava Falls</a>
-        <button type="button" id="reset-goal" class="text-btn" data-i18n="map.reset" hidden>Back to Cheyava Falls</button>
+      <div id="map-bar" class="map-bar"></div>
       </div>
     </section>
     <section id="destino" class="z535 card-dest" tabindex="-1" data-tone="neutral" aria-labelledby="dest-t" hidden>
@@ -114,19 +124,27 @@
     <aside class="side-col" aria-label="EVA status and controls" data-i18n-aria="side.region">
       <div id="hazard-slot" class="slot"></div>
       <div id="reroute-slot" class="slot"></div>
+      <section id="safe" class="z535" data-tone="pending" role="status" aria-live="polite" aria-labelledby="safe-t">
+        <div class="symbol"><svg aria-hidden="true"><use/></svg></div>
+        <h2 class="band" id="safe-t"><svg class="glyph" aria-hidden="true"><use/></svg><span id="safe-title">Computing</span></h2>
+        <div class="body"><span class="value" id="safe-value">—</span> <span id="safe-tag"></span><p class="detail" id="safe-detail"></p></div>
+      </section>
+      <div class="spe-slot">
+        <section id="spe-panel" class="z535" data-tone="warning" role="alert" aria-labelledby="spe-t" hidden>
+          <div class="symbol"><svg aria-hidden="true"><use href="#s-solar"/></svg></div>
+          <h2 class="band" id="spe-t"><svg class="glyph" aria-hidden="true"><use href="#g-solar"/></svg><span data-i18n="spe.title">Warning · solar storm</span></h2>
+          <div class="body" id="spe-body"></div>
+        </section>
+      </div>
       <nav id="tabs" class="console-tabs" role="tablist" data-i18n-aria="core.tabs" aria-label="Console panels">
         <button type="button" role="tab" id="tab-plan" data-tab="plan" aria-controls="pane-plan" aria-selected="true" data-i18n="core.tab.plan">PLAN</button>
         <button type="button" role="tab" id="tab-env" data-tab="env" aria-controls="pane-env" aria-selected="false" tabindex="-1" data-i18n="core.tab.env">ENV</button>
         <button type="button" role="tab" id="tab-log" data-tab="log" aria-controls="pane-log" aria-selected="false" tabindex="-1"><span data-i18n="core.tab.log">LOG</span><span id="log-count" class="count"></span></button>
       </nav>
 
+      <button type="button" id="pane-expand" class="pane-expand" aria-pressed="false"><span data-i18n="core.expand">Expand panel</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4H20V10M10 20H4V14M20 4L13 11M4 20L11 13" fill="none" stroke="currentColor" stroke-width="2.25"/></svg></button>
       <section id="pane-plan" class="pane" role="tabpanel" aria-labelledby="tab-plan">
         <p id="scenario" class="scenario">EVA · sol 1210 · Jezero</p>
-      <section id="safe" class="z535" data-tone="pending" role="status" aria-live="polite" aria-labelledby="safe-t">
-        <div class="symbol"><svg aria-hidden="true"><use/></svg></div>
-        <h2 class="band" id="safe-t"><svg class="glyph" aria-hidden="true"><use/></svg><span id="safe-title">Computing</span></h2>
-        <div class="body"><span class="value" id="safe-value">—</span> <span id="safe-tag"></span><p class="detail" id="safe-detail"></p></div>
-      </section>
 
       <div class="pair">
         <section class="z535" data-tone="mandatory" aria-labelledby="route-t">
@@ -138,20 +156,6 @@
           <div class="body"><span class="value" id="energy-value">—</span><p class="detail" id="energy-detail"></p></div>
         </section>
       </div>
-      <div class="spe-zone">
-        <button id="spe" type="button" class="spe" aria-pressed="false" aria-describedby="spe-sub">
-          <svg aria-hidden="true"><use href="#s-solar"/></svg>
-          <span class="spe-label" id="spe-label" data-i18n="spe.button">Simulate solar storm</span>
-          <span class="spe-sub" id="spe-sub" data-i18n="spe.sub">SPE · real May 2024 storm</span>
-        </button>
-      </div>
-      <div class="spe-slot">
-        <section id="spe-panel" class="z535" data-tone="warning" role="alert" aria-labelledby="spe-t" hidden>
-          <div class="symbol"><svg aria-hidden="true"><use href="#s-solar"/></svg></div>
-          <h2 class="band" id="spe-t"><svg class="glyph" aria-hidden="true"><use href="#g-solar"/></svg><span data-i18n="spe.title">Warning · solar storm</span></h2>
-          <div class="body" id="spe-body"></div>
-        </section>
-      </div>
       <div class="eva">
         <div class="slider"><label for="elapsed" data-i18n="eva.label">EVA clock</label><input type="range" id="elapsed" min="0" max="480" step="5" value="155"><output for="elapsed" id="elapsed-out">2 h 35 min</output></div>
         <p id="eva-start" class="hint eva-start" hidden></p>
@@ -159,15 +163,22 @@
         <p class="hint" data-i18n="eva.hint">Walk to the destination and work there: as the clock runs, the area you can still return from shrinks.</p>
       </div>
 
-      <fieldset class="prio"><legend data-i18n="prio.legend">Route priorities</legend>
+      <details class="prio" open><summary data-i18n="prio.legend">Route priorities</summary>
         <div class="slider"><label for="w-energy" data-i18n="prio.energy">Save energy</label><input type="range" id="w-energy" min="0" max="5" step="0.1" value="1"><output for="w-energy" id="w-energy-out">1.0</output></div>
         <div class="slider"><label for="w-risk" data-i18n="prio.risk">Avoid loose sand</label><input type="range" id="w-risk" min="0" max="5" step="0.1" value="1"><output for="w-risk" id="w-risk-out">1.0</output></div>
         <div class="slider"><label for="w-comms" data-i18n="prio.comms">Keep comms link</label><input type="range" id="w-comms" min="0" max="5" step="0.1" value="0.5"><output for="w-comms" id="w-comms-out">0.5</output></div>
         <div class="slider"><label for="w-radiation" data-i18n="prio.radiation">Less open sky</label><input type="range" id="w-radiation" min="0" max="5" step="0.1" value="0.5"><output for="w-radiation" id="w-radiation-out">0.5</output></div>
         <div class="slider"><label for="w-science" data-i18n="prio.science">Seek science</label><input type="range" id="w-science" min="0" max="5" step="0.1" value="1"><output for="w-science" id="w-science-out">1.0</output></div>
-      </fieldset>
+      </details>
 
       </section>
+      <div class="spe-zone">
+        <button id="spe" type="button" class="spe" aria-pressed="false" aria-describedby="spe-sub">
+          <svg aria-hidden="true"><use href="#s-solar"/></svg>
+          <span class="spe-label" id="spe-label" data-i18n="spe.button">Simulate solar storm</span>
+          <span class="spe-sub" id="spe-sub" data-i18n="spe.sub">SPE · real May 2024 storm</span>
+        </button>
+      </div>
       <section id="pane-env" class="pane" role="tabpanel" aria-labelledby="tab-env" hidden></section>
       <section id="pane-log" class="pane" role="tabpanel" aria-labelledby="tab-log" hidden></section>
     </aside>
@@ -182,7 +193,18 @@
   <dialog id="clock-dialog"></dialog>
   <dialog id="log-dialog"></dialog>
   <div id="toast" class="toast-stack" aria-live="polite"></div>
-  <footer class="credits" id="credits"></footer>
+  <section id="datos" class="page-data" aria-labelledby="datos-t">
+    <h2 id="datos-t" data-i18n="data.title">About the data</h2>
+    <div id="datos-body"></div>
+  </section>
+  <footer class="credits">
+    <nav class="foot-nav" data-i18n-aria="foot.nav" aria-label="More">
+      <a href="#destino" class="text-btn" id="why" data-i18n="map.why">Why Cheyava Falls</a>
+      <button type="button" id="reset-goal" class="text-btn" data-i18n="map.reset" hidden>Back to Cheyava Falls</button>
+      <a href="#datos" class="text-btn" data-i18n="data.link">About the data and credits</a>
+    </nav>
+    <p id="credits" class="foot-note"></p>
+  </footer>
 
   <script src="vendor/leaflet/leaflet.js"></script>
   <script type="module" src="main.js"></script>

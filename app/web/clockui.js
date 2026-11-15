@@ -13,6 +13,7 @@ const DEFAULT_REPLAY_LTST = 11;
 const MAX_UTC_MS = 8.64e15;
 const CLOCK_PUBLISH_INTERVAL_MS = 900;
 const DASH = "—";
+const SOL_SEPARATOR = " · ";
 
 const PLAY_PATH = "M4 2L13 8L4 14Z";
 const PAUSE_PATH = "M3.5 2H7V14H3.5ZM9 2H12.5V14H9Z";
@@ -153,6 +154,10 @@ function anchorNow(patch) {
   });
 }
 
+function canChangeWorld() {
+  return state.net.status === "solo" || state.ui.me?.role === "base";
+}
+
 function buildBar() {
   const bar = $("clock-bar");
   bar.setAttribute("role", "group");
@@ -164,7 +169,7 @@ function buildBar() {
     + `<path id="clk-play-icon" d=""/></svg>`;
   bar.innerHTML = `<button type="button" class="clk-chip" id="clk-chip"
       title="${chipTitle}"></button>
-    <span class="clk-cell clk-time" id="clk-time"></span>
+    <button type="button" class="clk-cell clk-time" id="clk-time"></button>
     <span class="clk-cell clk-ls" id="clk-ls"></span>
     <span class="clk-cell clk-sun" id="clk-sun"></span>
     <span class="clk-cell clk-earth" id="clk-earth"></span>
@@ -172,6 +177,7 @@ function buildBar() {
     <select class="clk-rate" id="clk-rate" aria-label="${rateLabel}">${rateOptions}</select>`;
 
   $("clk-chip").addEventListener("click", openDialog);
+  $("clk-time").addEventListener("click", openDialog);
   $("clk-play").addEventListener("click", () => {
     anchorNow({ paused: !state.doc.clock.paused });
   });
@@ -186,13 +192,33 @@ function chipText(clockDoc, clock) {
   return t("clock.chip.scenario", { rate: clockDoc.rate });
 }
 
+function renderTime(clock) {
+  const text = t("clock.solltst", { sol: clock.sol, hm: fmtHM(clock.ltst) });
+  const element = $("clk-time");
+  if (element.dataset.v === text) return;
+  element.dataset.v = text;
+  const separatorAt = text.indexOf(SOL_SEPARATOR);
+  if (separatorAt < 0) {
+    element.innerHTML = esc(text);
+    return;
+  }
+  const cut = separatorAt + SOL_SEPARATOR.length;
+  const solPart = esc(text.slice(0, cut));
+  element.innerHTML = `<span class="clk-sol">${solPart}</span>${esc(text.slice(cut))}`;
+}
+
+function rateTitle(live, canChange) {
+  if (!canChange) return t("clock.base_only");
+  return live ? t("clock.rate.live") : t("clock.rate");
+}
+
 function renderBar() {
   const clock = state.clock;
   const clockDoc = state.doc.clock;
   if (!clock.utcMs) return;
 
   setText($("clk-chip"), chipText(clockDoc, clock));
-  setText($("clk-time"), t("clock.solltst", { sol: clock.sol, hm: fmtHM(clock.ltst) }));
+  renderTime(clock);
 
   const lsText = t("clock.ls", { ls: num(clock.ls, 0), season: season(clock.season) });
   const dustText = clock.dustSeason ? ` · ${esc(t("clock.dust"))}` : "";
@@ -217,7 +243,9 @@ function renderBar() {
   play.setAttribute("aria-label", t(clockDoc.paused ? "clock.play" : "clock.pause"));
   play.title = play.getAttribute("aria-label");
   $("clk-play-icon").setAttribute("d", clockDoc.paused ? PLAY_PATH : PAUSE_PATH);
-  play.disabled = live;
+  const canChange = canChangeWorld();
+  play.disabled = live || !canChange;
+  if (!canChange) play.title = t("clock.base_only");
 
   const select = $("clk-rate");
   const rate = live ? 1 : clockDoc.rate;
@@ -225,8 +253,8 @@ function renderBar() {
     select.add(new Option(`×${rate}`, rate));
   }
   select.value = String(rate);
-  select.disabled = live;
-  select.title = live ? t("clock.rate.live") : t("clock.rate");
+  select.disabled = live || !canChange;
+  select.title = rateTitle(live, canChange);
 }
 
 function parseHM(text) {
@@ -316,6 +344,18 @@ function dialogHtml(clockDoc, sols) {
       id="ck-apply">${esc(t("clock.apply"))}</button><button type="button"
       id="ck-cancel">${esc(t("clock.cancel"))}</button></menu>
   </form>`;
+}
+
+function lockDialog(dlg) {
+  const applyButton = $("ck-apply");
+  applyButton.disabled = true;
+  applyButton.closest("menu").insertAdjacentHTML(
+    "beforebegin",
+    `<p class="hint clk-baseonly">${esc(t("clock.base_only"))}</p>`,
+  );
+  for (const element of dlg.querySelectorAll("input, select, .clk-preset")) {
+    element.disabled = true;
+  }
 }
 
 function openDialog() {
@@ -442,6 +482,7 @@ function openDialog() {
     event.preventDefault();
     $("ck-apply").click();
   });
+  if (!canChangeWorld()) lockDialog(dlg);
   $("ck-apply").addEventListener("click", apply);
 
   dlg.showModal();

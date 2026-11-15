@@ -4,6 +4,7 @@ import fs from "node:fs";
 import { simPresence, simOps, simStartOps, simFrom, scenarioStartUtc, simStepper } from "./sim.js";
 import { initialDoc, applyOp, decide } from "./sync-core.js";
 import { energyGrid, planningGrid, shortestPath } from "./pathfind.js";
+import { solToUtc } from "./marsclock.js";
 
 const J = (f) => JSON.parse(fs.readFileSync(new URL(f, import.meta.url), "utf8"));
 const grid = J("./data/jezero_cost_grid.json"), cfg = J("./data/mission_config.json"), scn = J("./data/scenarios/storm_eva.json"), trav = J("./data/traverse_cells.json");
@@ -95,8 +96,10 @@ test("the fault lies on the default foot route (Three Forks -> Cheyava Falls), 4
   for (const a of scn.assets) assert.ok(e[a.cell[0] * cols + a.cell[1]] !== Infinity, `${a.id} on walkable ground`);
 });
 
-test("the scenario starts at LTST 11:00 of sol 1210 (the default clock anchor)", () => {
-  assert.ok(Math.abs(startUtc - initialDoc(0).clock.anchorUtcMs) < 60000);
+test("the scenario starts at LTST 11:00 of sol 1210; the default clock is Live (real UTC)", () => {
+  assert.ok(Math.abs(startUtc - solToUtc(1210, 11)) < 60000);
+  const ck = initialDoc(5).clock;
+  assert.equal(ck.mode, "live"); assert.equal(ck.anchorUtcMs, 5); assert.equal(ck.rate, 1);
 });
 
 test("simStepper fires only on a replay/scenario clock and never on a jump, a rewind or Live mode; no event re-fires after a rewind", () => {

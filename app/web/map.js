@@ -1,6 +1,6 @@
 import { state, set, on, emit } from "./store.js";
 import { t, num } from "./i18n.js";
-import { $, esc, ico } from "./ui.js";
+import { $, esc, ico, toast } from "./ui.js";
 import { setGoal } from "./plan.js";
 import { setGrid, cellToLatLng, latLngToCell, bounds, maskSegments, metersPerPx } from "./geo.js";
 
@@ -711,19 +711,6 @@ function renderPick() {
   }
 }
 
-function addCorner(position, className) {
-  const control = L.control({ position });
-  let el;
-  control.onAdd = () => {
-    el = L.DomUtil.create("div", className);
-    L.DomEvent.disableClickPropagation(el);
-    L.DomEvent.disableScrollPropagation(el);
-    return el;
-  };
-  control.addTo(map);
-  return el;
-}
-
 const SCALE_STEPS_M = [5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000];
 const SCALE_MIN_BAR_PX = 110;
 
@@ -763,11 +750,15 @@ function drawReadout(latLng) {
 }
 
 const GRATICULE_STEPS_DEG = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1];
+const GRATICULE_COARSE_DEG = 0.05;
 
 function graticuleStep(zoom) {
-  const minSpacingPx = map.getSize().x < 600 ? 64 : 96;
+  const size = map.getSize();
+  const minSpacingPx = size.x < 600 ? 64 : 96;
   const spacingPx = (step) => (step * METERS_PER_DEGREE) / metersPerPx(zoom);
-  return GRATICULE_STEPS_DEG.find((step) => spacingPx(step) >= minSpacingPx) ?? 0.1;
+  const fine = GRATICULE_STEPS_DEG.find((step) => spacingPx(step) >= minSpacingPx) ?? 0.1;
+  const viewSpanDeg = (size.x * metersPerPx(zoom)) / METERS_PER_DEGREE;
+  return viewSpanDeg >= 2 * GRATICULE_COARSE_DEG ? Math.max(fine, GRATICULE_COARSE_DEG) : fine;
 }
 
 const GraticuleLayer = L.GridLayer.extend({
@@ -1183,6 +1174,10 @@ const TOOL_ICONS = {
     + '<path d="M12 1V5M12 19V23M1 12H5M19 12H23" stroke="currentColor" stroke-width="2"/>',
   fit: '<path d="M3 9V3H9M15 3H21V9M21 15V21H15M9 21H3V15" fill="none"'
     + ' stroke="currentColor" stroke-width="2.25"/>',
+  guide: '<path d="M3 8V3H8M16 3H21V8M21 16V21H16M8 21H3V16" fill="none"'
+    + ' stroke="currentColor" stroke-width="2.25"/>'
+    + '<path d="M9 15V11H15" fill="none" stroke="currentColor" stroke-width="2"/>'
+    + '<path d="M14 8.5L17 11L14 13.5Z" fill="currentColor"/>',
   report: '<path d="M4 3H20V21H4Z" fill="none" stroke="currentColor" stroke-width="2"/>'
     + '<path d="M12 8V16M8 12H16" stroke="currentColor" stroke-width="2.25"/>',
 };
@@ -1221,6 +1216,7 @@ function buildTools() {
     set("ui", { drawer: !state.ui.drawer });
   });
   addTool(box, "report", icon("report"), "map.report", () => emit("map:report"));
+  addTool(box, "guide", icon("guide"), "map.guide", () => set("ui", { guide: true }));
   return layersButton;
 }
 
@@ -1257,6 +1253,24 @@ function computeTileBounds() {
   ];
 }
 
+function addGridOutline() {
+  const strokes = [
+    { color: "--halo", weight: 4, dashArray: null },
+    { color: "--ink", weight: 2, dashArray: "8 6" },
+  ];
+  for (const { color, weight, dashArray } of strokes) {
+    L.rectangle(gridBounds, {
+      pane: "outline",
+      interactive: false,
+      fill: false,
+      color: resolveColor(color),
+      weight,
+      opacity: 1,
+      dashArray,
+    }).addTo(map);
+  }
+}
+
 function addBaseLayers() {
   const [[south, west], [north, east]] = gridBounds;
   const tilesArea = L.latLngBounds(
@@ -1277,9 +1291,7 @@ function addBaseLayers() {
     interactive: false,
     zIndex: 0,
   });
-  background.on("error", () => {
-    $("hint").textContent = `${t("map.nobg")} ${t("map.hint")}`;
-  });
+  background.on("error", () => toast(t("map.nobg"), "warning"));
   background.addTo(map);
 
   L.tileLayer("tiles/{z}/{y}/{x}.webp", {
@@ -1295,6 +1307,7 @@ function addBaseLayers() {
     maxNativeZoom: 17,
     zIndex: 2,
   }).addTo(map);
+  addGridOutline();
   new GraticuleLayer({
     pane: "graticule",
     bounds: L.latLngBounds(gridBounds).pad(0.25),
@@ -1303,9 +1316,17 @@ function addBaseLayers() {
 }
 
 function addOverlayElements() {
-  L.control.attribution({ position: "bottomleft", prefix: false }).addTo(map);
-  scaleEl = addCorner("bottomleft", "map-scale");
-  readoutEl = addCorner("bottomleft", "map-readout");
+  const bar = $("map-bar");
+  const addBarItem = (className) => {
+    const element = document.createElement("div");
+    element.className = className;
+    bar.append(element);
+    return element;
+  };
+  readoutEl = addBarItem("map-readout");
+  scaleEl = addBarItem("map-scale");
+  const attribution = L.control.attribution({ position: "bottomleft", prefix: false });
+  bar.append(attribution.addTo(map).getContainer());
 
   graticuleEl = L.DomUtil.create("div", "map-grat", host);
   graticuleEl.setAttribute("aria-hidden", "true");
@@ -1345,6 +1366,13 @@ function keepMapFitted() {
     }, { passive: true });
   }
 
+  let guideOn = !!state.ui.guide;
+  on("ui", (ui) => {
+    if (!!ui.guide === guideOn) return;
+    guideOn = !!ui.guide;
+    touched = false;
+  });
+
   const fitOnce = () => {
     if (fitted || !host.clientWidth || !host.clientHeight) return;
     fitted = true;
@@ -1361,7 +1389,10 @@ function keepMapFitted() {
         return;
       }
       map.invalidateSize({ pan: false });
-      if (!touched) fit();
+      if (!touched) {
+        map.setMinZoom(9);
+        fit();
+      }
       limitZoom();
     });
   }).observe(host);
@@ -1404,7 +1435,7 @@ function bindMapEvents() {
     drawReadout(event.latlng);
     if (picker) return picker.click(cell);
     if (state.ui.selected) set("ui", { selected: null });
-    if (cell >= 0) setGoal(cell);
+    if (cell >= 0 && !state.ui.guide) setGoal(cell);
   });
   map.on("mousemove", (event) => {
     isHovering = true;
@@ -1472,7 +1503,6 @@ export async function init(config) {
   bindMapEvents();
 
   const refreshTexts = () => {
-    $("hint").textContent = t("map.hint");
     setPickLabels();
     drawScale();
     drawReadout();

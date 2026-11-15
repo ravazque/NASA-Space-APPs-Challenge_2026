@@ -749,7 +749,11 @@ function buildStrip() {
   const safety = h("ul", "legend");
   safety.id = "safety-legend";
   safety.innerHTML = `<li data-only="spe" hidden></li><li data-only="refuge" hidden></li>`;
-  strip.append(top, safety);
+  const legendBox = h("details", "legend-box");
+  const legendSummary = h("summary");
+  legendSummary.id = "legend-sum";
+  legendBox.append(legendSummary, safety);
+  strip.append(top, legendBox);
 }
 
 function renderStrip() {
@@ -758,6 +762,7 @@ function renderStrip() {
   openButton.setAttribute("aria-expanded", String(!!state.ui.drawer));
   $("profile-strip").replaceChildren(profileControl());
   $("safety-legend").setAttribute("aria-label", t("legend.title"));
+  $("legend-sum").textContent = t("legend.title");
   safetyLegend();
   rasterLegend();
 }

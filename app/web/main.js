@@ -6,7 +6,7 @@ import { initShell, setControls, showCoreError } from "./shell.js";
 import { energyGrid } from "./pathfind.js";
 
 const I18N_MODULES = ["map", "layers", "clock", "hub", "log"];
-const MODULES = ["sync", "clockui", "map", "plan", "layers", "log", "hubui"];
+const MODULES = ["sync", "clockui", "map", "plan", "layers", "log", "hubui", "infocard", "dev"];
 
 window.ARIADNE = { store, submit: null, data: null, map: null, t, num, date, pick, getLang };
 

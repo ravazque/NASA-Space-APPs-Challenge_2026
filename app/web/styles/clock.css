@@ -1,6 +1,6 @@
 .clock-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s3); font-size: var(--t-sm); padding-block: 3px; }
 .clk-cell { white-space: nowrap; font-weight: 600; flex: none; }
-.clk-time { min-width: 10.5em; }
+.clk-time { min-width: 10.5em; appearance: none; background: none; border: 0; padding: 0; font: inherit; font-weight: 600; color: inherit; text-align: left; cursor: pointer; }
 .clk-ls { min-width: 8em; }
 .clk-sun { min-width: 3.2em; }
 .clk-earth { color: var(--ink-2); font-weight: 400; }
@@ -12,22 +12,14 @@
 .clk-btn:disabled, .clk-rate:disabled { color: var(--ink-3); border-color: var(--ink-3); cursor: not-allowed; }
 .clk-rate { padding-inline: var(--s2); font-weight: 600; flex: none; }
 .clk-earth, .clk-dust { display: none; }
-@media (min-width: 1200px) and (max-width: 1499px), (max-width: 899px) { .clk-earth, .clk-dust { display: inline; } }
-@media (max-width: 1499px) {
-  .top { flex-wrap: wrap; gap: var(--s2) var(--s3); }
-  .brand { flex: 1; }
-  .clock-bar { order: 3; flex-basis: 100%; }
-}
+@media (min-width: 900px) { .clk-ls, .clk-sun { display: none; } .clock-bar { flex-wrap: nowrap; } .clk-chip { width: auto; max-width: 15rem; } }
+@media (min-width: 900px) and (max-width: 1199px) { .top { flex-wrap: wrap; row-gap: var(--s2); padding-block: var(--s2); } .brand { flex: 1; } .clock-bar { order: 3; flex-basis: 100%; } }
 @media (pointer: coarse), (max-width: 899px) { .clk-chip, .clk-btn, .clk-rate { min-height: var(--tap); } .clk-btn { min-width: var(--tap); } .clk-info { min-width: var(--tap); } }
-
-@media (max-width: 899px) { .clk-chip { width: auto; min-width: 15rem; } }
-@media (max-width: 600px) {
-  .clk-chip { order: 0; flex: 1 0 100%; width: auto; }
-  .clk-btn { order: 1; }
-  .clk-rate { order: 2; }
-  .clk-cell { order: 3; }
-  .clk-time { min-width: 0; }
-  .clk-ls { min-width: 0; }
+@media (max-width: 899px) {
+  .clk-chip, .clk-ls, .clk-sun, .clk-earth, .clk-dust, .clk-rate { display: none; }
+  .clock-bar { flex-wrap: nowrap; gap: var(--s2); }
+  .clk-sol { display: none; }
+  .clk-time { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .18em; }
 }
 
 .clk-form { display: grid; gap: var(--s3); width: min(30rem, 100%); }

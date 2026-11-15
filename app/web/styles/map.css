@@ -1,6 +1,6 @@
 .map-scroll { min-width: 0; }
 .map-frame { position: relative; background: var(--ground-2); width: 100%;
-  min-height: 24rem; height: clamp(24rem, calc(100vh - 3.5rem - 2 * var(--s4) - var(--strip-h)), 60rem); height: clamp(24rem, calc(100svh - 3.5rem - 2 * var(--s4) - var(--strip-h)), 60rem); }
+  min-height: 24rem; height: clamp(24rem, calc(100vh - var(--top-h) - 2 * var(--s4) - var(--strip-h)), 60rem); height: clamp(24rem, calc(100svh - var(--top-h) - 2 * var(--s4) - var(--strip-h)), 60rem); }
 .map-frame { isolation: isolate; }
 .map-frame::after { content: ""; position: absolute; inset: 0; border: var(--hair) solid var(--ink); pointer-events: none; z-index: 1200; }
 @media (max-width: 899px) { .map-frame { height: 62vh; height: 62svh; min-height: 20rem; } }
