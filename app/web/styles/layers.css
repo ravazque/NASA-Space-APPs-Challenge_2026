@@ -46,6 +46,7 @@
 .lsel input { width: 1.125rem; height: 1.125rem; margin: 0; flex: none; accent-color: var(--ink); }
 .lsel input:disabled { cursor: not-allowed; }
 .lsw { display: inline-flex; flex: none; width: 1.5rem; }
+.lsw .sws i { width: .3rem; }
 .lname { min-width: 0; overflow-wrap: anywhere; }
 .ltags { grid-column: 1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1); padding: 0 0 var(--s1) calc(1.125rem + 1.5rem + 2 * var(--s2)); min-height: 0; }
 .ltags:empty { display: none; }
