@@ -9,7 +9,7 @@
 
 > An offline field network for a spacewalk on Mars: where do we walk, can we still get back, and what do we do if a dust storm arrives. Several devices, one shared plan, no internet.
 
-![ARIADNE console: route, safe-return limit, dust-storm warning and synced crew](docs/img/console.png)
+![ARIADNE console: route, safe-return limit, synced crew and the labelled map toolbar](docs/img/console.png)
 
 Entry for NASA Space Apps 2026, *Mars Surface Exploration Map*. ARIADNE is not affiliated with or endorsed by NASA.
 
@@ -31,7 +31,7 @@ A message takes 3 to 22 minutes between Mars and Earth, so a crew out on an EVA 
 
 | Live status for the base | Layers |
 |---|---|
-| ![Live status view with environment readings](docs/img/status.png) | ![Layer drawer with data tags](docs/img/layers.png) |
+| ![Live status: a crew fault report reroutes everyone, with MEDA readings](docs/img/status.png) | ![Layer drawer with data tags](docs/img/layers.png) |
 
 | Phone | Guide mode |
 |---|---|
@@ -59,7 +59,8 @@ A message takes 3 to 22 minutes between Mars and Earth, so a crew out on an EVA 
 app/web        the app (HTML, CSS, ES modules, data, offline tiles)
 app/hub        LAN hub (Node 20, ws)
 app/pipeline   scripts that download and prepare the NASA data
-android        Capacitor Android project
+android        Capacitor Android project and icon generator
+docs           screenshots and team logo
 .github        CI: tests, APK build and release, GitHub Pages
 ```
 
@@ -95,6 +96,8 @@ Without a hub, `?sim=storm_eva` runs the same scenario inside a single window.
 ### Android
 
 CI builds a debug APK on every push and publishes it on the **Releases** page as `apk-latest`. To build it locally, install JDK 21 and the Android command-line tools (`brew install openjdk@21 && brew install --cask android-commandlinetools` on macOS, `jdk21-openjdk` plus the Android Studio SDK on Linux) and run `make apk`. Install with `adb install -r android/app/build/outputs/apk/debug/app-debug.apk`, then tap the sync chip in the app and enter the hub's `ip:port`.
+
+The launcher icon is the team logo (`docs/brand/ariadne-logo.jpeg`); after changing it, run `python3 android/make_icon.py` (Pillow + numpy) to regenerate the `mipmap-*` icons. The web view sits below the status bar and notch (`adjustMarginsForEdgeToEdge` in `capacitor.config.json`).
 
 ## Zone
 
