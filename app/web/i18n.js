@@ -13,7 +13,8 @@ let lang = (() => {
 
 export const getLang = () => lang;
 export const has = (key) => key in DICT[lang] || key in DICT.en;
-export const t = (key, v = {}) => (DICT[lang][key] ?? DICT.en[key] ?? key).replace(/\{(\w+)\}/g, (_, k) => v[k] ?? "");
+const UNIT = /(\d) (?=(?:km|m|MJ|min|ms|s|h|m\/s|%|°C|µGy(?:\/[a-zñí]+)?)(?![\p{L}\d]))/gu;
+export const t = (key, v = {}) => (DICT[lang][key] ?? DICT.en[key] ?? key).replace(/\{(\w+)\}/g, (_, k) => v[k] ?? "").replace(UNIT, "$1\u00a0");
 export const shown = (s) => (typeof s === "string" && has(`txt.${s}`) ? t(`txt.${s}`) : s);
 export const tEn = (key) => DICT.en[key] ?? key;
 export const num = (n, d = 0) => Number(n).toLocaleString(lang, { minimumFractionDigits: d, maximumFractionDigits: d }).replace(/^-/, "−");
@@ -27,6 +28,7 @@ export function apply(root = document) {
   for (const el of root.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
   for (const el of root.querySelectorAll("[data-i18n-aria]")) el.setAttribute("aria-label", t(el.dataset.i18nAria));
   for (const el of root.querySelectorAll("[data-i18n-title]")) el.title = t(el.dataset.i18nTitle);
+  for (const el of root.querySelectorAll("[data-tag]")) el.textContent = t(`core.tagw.${el.dataset.tag}`);
   for (const b of root.querySelectorAll("[data-lang]")) b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
 }
 

@@ -215,7 +215,7 @@ function buildVectors() {
     map.pattern("layers:hard", hardM, { kind: "hatch-ink" });
     map.pattern("layers:rocks", extra.rocks, { kind: "dots-ink" });
     map.outline("layers:obstacles", extra.rocks, { token: "--ink", width: 1, halo: false });
-    map.markers("layers:craters", extra.craters.map((c) => ({ cell: c.cell, kind: "crater", radius_m: c.diam_m / 2, label: c.diam_m >= 100 ? `Ø ${num(c.diam_m, 0)} m` : undefined, optional: true, sub: c.diam_m >= 100 ? t("layers.depth", { m: num(c.depth_m, 1) }) : undefined })));
+    map.markers("layers:craters", extra.craters.map((c) => ({ cell: c.cell, kind: "crater", radius_m: c.diam_m / 2, label: c.diam_m >= 100 ? `Ø ${num(c.diam_m, 0)}\u00a0m` : undefined, optional: true, sub: c.diam_m >= 100 ? t("layers.depth", { m: num(c.depth_m, 1) }) : undefined })));
   }
   drawReturnZone();
   if (d.traverse?.length > 1) map.lines("layers:traverse", [d.traverse], { token: "--ink", width: 1.5, halo: true, dash: [4, 4], opacity: 0.6, cap: "butt" });

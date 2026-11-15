@@ -143,6 +143,7 @@ export default {
     "core.tag.MODEL": "MODEL: a formula, climatology or assumption; or a measurement from another place or time used as a stand-in.",
     "core.tag.SIMULATED": "SIMULATED: scripted scenario from the test mode.",
     "core.tag.REPORTED": "REPORTED: entered by a crew member over the LAN.",
+    "core.tagw.MEASURED": "MEASURED", "core.tagw.DERIVED": "DERIVED", "core.tagw.MODEL": "MODEL", "core.tagw.SIMULATED": "SIMULATED", "core.tagw.REPORTED": "REPORTED",
   },
   es: {
 
@@ -287,5 +288,6 @@ export default {
     "core.tag.MODEL": "MODELO: fórmula, climatología o suposición; o una medida de otro lugar o época usada como sustituto.",
     "core.tag.SIMULATED": "SIMULADO: escenario guionizado del modo de prueba.",
     "core.tag.REPORTED": "INFORMADO: anotado por un miembro de la tripulación por la red local.",
+    "core.tagw.MEASURED": "MEDIDO", "core.tagw.DERIVED": "DERIVADO", "core.tagw.MODEL": "MODELO", "core.tagw.SIMULATED": "SIMULADO", "core.tagw.REPORTED": "INFORMADO",
   },
 };

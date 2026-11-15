@@ -223,10 +223,11 @@ function renewMine() {
   }
 }
 
+const servedByHub = () => /^https?:$/.test(location.protocol) && !!performance.getEntriesByType?.("navigation")[0]?.serverTiming?.some((x) => x.name === "ariadne-hub");
 async function resolveHub() {
   const qh = q.get("hub");
   if (qh) return qh;
-  if (/^https?:$/.test(location.protocol)) {
+  if (servedByHub()) {
     try {
       const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 1500);
       const r = await fetch("/health", { signal: ctl.signal, cache: "no-store" }).finally(() => clearTimeout(to));

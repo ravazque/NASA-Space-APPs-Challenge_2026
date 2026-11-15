@@ -32,6 +32,38 @@ export function showCoreError(file) {
   console.error(`ARIADNE: core data failed to load (${file})`);
 }
 
+const narrow = () => matchMedia("(max-width: 899px)").matches;
+const ALERTS = [
+  ["safe", () => { const el = $("safe"); return el.getAttribute("role") === "alert" ? { el, tone: "danger", sig: $("safe-title").textContent, line: $("safe-detail").textContent } : null; }],
+  ["reroute", () => { const el = $("reroute-slot").firstElementChild; return el && { el, tone: el.dataset.tone, sig: el.querySelector(".band").textContent, line: el.querySelector(".log-rr-text")?.textContent ?? "" }; }],
+  ["hazard", () => { const el = $("hazard-slot").firstElementChild; return el && { el, tone: el.dataset.tone, sig: el.querySelector(".band").textContent, line: [...el.querySelectorAll(".detail")].map((d) => d.textContent.trim().replace(/[.\s]+$/, "")).filter(Boolean).join(". ") }; }],
+];
+let shownAlert = null, alertKey = "", alertEl = null;
+function renderAlert() {
+  const bar = $("alert-bar"), found = narrow() ? ALERTS.map(([id, f]) => { const a = f(); return a && { id, ...a }; }).filter(Boolean) : [];
+  const a = found.find((x) => x.tone === "danger") ?? found[0];
+  shownAlert = a?.el ?? null;
+  if (!a) { bar.hidden = true; alertKey = ""; alertEl = null; return; }
+  bar.hidden = false; bar.dataset.tone = a.tone;
+  $("alert-sig").textContent = a.sig; $("alert-line").textContent = a.line; $("alert-show").textContent = t("log.show");
+  const key = `${a.id}|${a.tone}|${a.sig}`;
+  if (key !== alertKey || a.el !== alertEl) { alertKey = key; alertEl = a.el; $("alert-sr").textContent = `${a.sig}. ${a.line}`; }
+}
+function initAlertBar() {
+  $("alert-show").addEventListener("click", () => {
+    if (!shownAlert) return;
+    if (shownAlert.id === "safe") set("ui", { tab: "plan" });
+    shownAlert.scrollIntoView({ block: "start" }); shownAlert.tabIndex = -1; shownAlert.focus({ preventScroll: true });
+  });
+  let raf = 0;
+  const later = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(renderAlert); };
+  const mo = new MutationObserver(later);
+  for (const id of ["safe", "reroute-slot", "hazard-slot"]) mo.observe($(id), { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["role", "data-tone"] });
+  matchMedia("(max-width: 899px)").addEventListener("change", later);
+  on("lang", later);
+  renderAlert();
+}
+
 export function initShell() {
   apply();
   for (const b of document.querySelectorAll("[data-lang]")) b.addEventListener("click", () => setLang(b.dataset.lang));
@@ -52,6 +84,7 @@ export function initShell() {
     setTimeout(() => p.remove(), tone === "danger" ? 10000 : 6000);
   });
   renderFooter();
+  initAlertBar();
   on("lang", () => { renderFooter(); if (!$("map-error").hidden) $("err-body").textContent = t("err.core", { file: $("err-body").dataset.file ?? "" }); });
 }
 

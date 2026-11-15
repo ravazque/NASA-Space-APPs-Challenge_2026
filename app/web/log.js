@@ -325,7 +325,7 @@ function openReport(init = {}) {
     const hint = sec === "env_change" ? (sev >= 2 ? "log.sev.hint.env" : "log.sev.hint.1") : `log.sev.hint.${sev}`;
     form.querySelector("[data-sev-hint]").textContent = t(hint);
     form.querySelector("[data-loc]").textContent = cellText(loc);
-    form.querySelector("[data-radius]").textContent = `${form.elements.radius.value} m`;
+    form.querySelector("[data-radius]").textContent = `${form.elements.radius.value}\u00a0m`;
   };
   form.addEventListener("input", sync);
   form.addEventListener("change", async (ev) => {

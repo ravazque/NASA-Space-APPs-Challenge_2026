@@ -199,7 +199,7 @@ export async function startHub(opts = {}) {
         const ext = path.extname(file).toLowerCase();
         const cache = p.startsWith("/tiles/") ? "max-age=86400" : NOCACHE.has(ext) ? "no-cache" : "max-age=3600";
         const etag = `"${st2.size.toString(16)}-${Math.floor(st2.mtimeMs).toString(16)}"`, lastMod = st2.mtime.toUTCString();
-        const h = { "Content-Type": MIME[ext] ?? "application/octet-stream", "Cache-Control": cache, ETag: etag, "Last-Modified": lastMod, Vary: "Accept-Encoding" };
+        const h = { "Content-Type": MIME[ext] ?? "application/octet-stream", "Cache-Control": cache, ETag: etag, "Last-Modified": lastMod, Vary: "Accept-Encoding", "Server-Timing": "ariadne-hub" };
         const inm = req.headers["if-none-match"], ims = Date.parse(req.headers["if-modified-since"] ?? "");
         if (inm ? inm.split(",").some((x) => x.trim().replace(/^W\//, "") === etag) : ims >= Math.floor(st2.mtimeMs / 1000) * 1000) { res.writeHead(304, h).end(); return; }
         const gz = GZIP.has(ext) && st2.size > 1024 && /\bgzip\b/.test(req.headers["accept-encoding"] ?? "");

@@ -201,7 +201,9 @@ function placePlates() {
 }
 
 let pickBox;
-function finishPick(v) { const p = picker; if (!p) return; picker = null; p.layer?.remove(); host.classList.remove("picking"); pickBox.hidden = true; p.done(v); }
+const narrow = () => matchMedia("(max-width: 899px)").matches;
+let backY = null;
+function finishPick(v) { const p = picker; if (!p) return; picker = null; p.layer?.remove(); host.classList.remove("picking"); pickBox.hidden = true; if (backY != null) { scrollTo({ top: backY, behavior: "instant" }); backY = null; } p.done(v); }
 function startPick(kind, promptKey) {
   finishPick(null);
   return new Promise((done) => {
@@ -212,6 +214,7 @@ function startPick(kind, promptKey) {
       pts.push(c); draw(); renderPick();
     }, undo() { pts.pop(); draw(); renderPick(); }, ok() { if (pts.length >= 3) finishPick(pts.slice()); }, n: () => pts.length };
     host.classList.add("picking"); pickBox.hidden = false; renderPick();
+    if (narrow()) { backY = scrollY; host.scrollIntoView({ block: "start", behavior: "instant" }); }
   });
 }
 function renderPick() {
@@ -224,7 +227,7 @@ function renderPick() {
 function corner(pos, cls) { const c = L.control({ position: pos }); let el; c.onAdd = () => { el = L.DomUtil.create("div", cls); L.DomEvent.disableClickPropagation(el); L.DomEvent.disableScrollPropagation(el); return el; }; c.addTo(map); return el; }
 let scaleEl, readEl, gratEl, noteEl, hover = false;
 function drawScale() {
-  const mpp = metersPerPx(map.getZoom()), L1 = [5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000].find((n) => n / mpp >= 110) ?? 5000, w = L1 / mpp, lab = (m) => (m >= 1000 ? `${num(m / 1000, 0)} km` : `${num(m, 0)} m`);
+  const mpp = metersPerPx(map.getZoom()), L1 = [5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000].find((n) => n / mpp >= 110) ?? 5000, w = L1 / mpp, lab = (m) => (m >= 1000 ? `${num(m / 1000, 0)}\u00a0km` : `${num(m, 0)}\u00a0m`);
   scaleEl.innerHTML = `<div class="sc-row"><div class="sc-bar" style="width:${w}px">${[0, 1, 2, 3].map((i) => `<i${i % 2 ? "" : ' class="k"'}></i>`).join("")}</div><div class="sc-n" aria-hidden="true"><b>${ico("g-north")}</b>${esc(t("scale.north"))}</div></div>`
     + `<div class="sc-lab" style="min-width:${w}px"><span>0</span><span>${lab(L1 / 2)}</span><span>${lab(L1)}</span></div><div class="sc-cap">${esc(t("scale.cell", { m: num(data.cellM, 0) }))}</div>`;
 }
@@ -384,7 +387,7 @@ function buildTools() {
 const TILE_DEG = 180 / 2 ** 13;
 let TB;
 const insideZoom = () => map.getBoundsZoom(TB, true);
-function limits() { map.setMinZoom(Math.max(9, insideZoom() - 0.5)); }
+function limits() { map.setMinZoom(Math.max(9, insideZoom())); }
 function fit() {
   const z = insideZoom();
   map.setView(map.getBoundsZoom(B) >= z ? L.latLngBounds(B).getCenter() : cellToLatLng(data.habitat), z, { animate: false });
