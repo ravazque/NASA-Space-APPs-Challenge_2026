@@ -51,6 +51,7 @@ make apk           build the debug Android APK (JDK 21 + Android SDK)
 make data          rebuild data from NASA sources (needs network)
 make tiles         download the HiRISE tiles z13 to z17
 make clean         remove local envs and build outputs
+make fclean        clean + downloads, tiles and caches (then: make data tiles)
 ```
 
 Join from phones: `make hub` prints a QR and the laptop's LAN address; scan it on the same Wi-Fi or hotspot. The page is English by default; use the `EN | ES` switch in the header (or `?lang=es`).
