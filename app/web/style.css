@@ -165,7 +165,7 @@ input[type=range]:disabled { cursor: not-allowed; opacity: .4; }
 @media (max-width: 899px) {
   .top { flex-wrap: wrap; gap: var(--s2) var(--s3); padding: var(--s2) var(--s4); }
   .brand { flex: 1; }
-  .clock-bar { order: 3; flex-basis: 100%; overflow-x: auto; scrollbar-width: none; white-space: nowrap; }
+  .clock-bar { order: 3; flex-basis: 100%; }
   .wordmark { width: 140px; }
   .console { grid-template-columns: minmax(0, 1fr); grid-template-areas: "map" "side" "dest" "val"; padding-inline: var(--s4); gap: var(--s4); }
   .card-grid { grid-template-columns: minmax(0, 1fr); }

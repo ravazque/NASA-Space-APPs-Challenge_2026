@@ -61,7 +61,7 @@ function strokes(id, polys, pane, { token = "--ink", width = 2, halo = false, da
   if (!polys?.length) return put(id, null);
   const g = L.layerGroup(), base = { pane, interactive: false, lineCap: cap, lineJoin: join, fill: false };
   if (halo) g.addLayer(L.polyline(polys, { ...base, color: tok(halo === true ? "--ground" : halo), weight: width + 3, opacity: 1 }));
-  g.addLayer(L.polyline(polys, { ...base, color: tok(token), weight: width, opacity, dashArray: dash?.join(" ") }));
+  g.addLayer(L.polyline(polys, { ...base, color: tok(token), weight: width, opacity, dashArray: Array.isArray(dash) ? dash.join(" ") : dash }));
   put(id, g);
 }
 

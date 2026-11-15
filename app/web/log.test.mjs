@@ -114,7 +114,7 @@ const grid = { rows: 356, cols: 193 }, from = { deviceId: "A1", crew: "EV1", rol
 const ask = (doc, op, f = from) => decide(doc, { op }, f, 1e6, { grid });
 const withLog = (...entries) => entries.reduce((d, e) => applyOp(d, { t: "log.append", entry: e }, { seq: d.seq + 1 }), initialDoc(0));
 
-test("contract: zone, route and equipment lock requests are accepted by the hub", () => {
+test("hub accepts zone, route and equipment lock requests", () => {
   const cells = [1, 2, 3], base0 = { cells, profiles: ["foot"], reason: "x", sticky: false, ttlMs: 30000 };
   assert.equal(check({ t: "lock.request", target: zoneTarget("A1B2C3D4", Date.now()), kind: "zone", ...base0 }, grid).err, undefined);
   assert.match(zoneTarget("A1", 1.7e12 + 123), /^zone:A1:\d{1,9}$/);
@@ -124,7 +124,7 @@ test("contract: zone, route and equipment lock requests are accepted by the hub"
   assert.equal(EQUIP_ID_RE.test("sim:rover1"), false);
 });
 
-test("contract: zone limits match the hub (cells under one 64 KB frame, 64 polygon vertices)", () => {
+test("zone limits match the hub (cells under one 64 KB frame, 64 polygon vertices)", () => {
   const cells = Array.from({ length: ZONE_MAX_CELLS }, (_, i) => 59000 + i);
   const op = { t: "lock.request", target: zoneTarget("A1", 5), kind: "zone", cells, poly: Array.from({ length: POLY_MAX }, (_, i) => i), profiles: ["foot", "vehicle", "cargo"], reason: "r", sticky: false, ttlMs: 30000 };
   assert.ok(JSON.stringify({ type: "op", id: 99999, op }).length < 65536);
@@ -134,7 +134,7 @@ test("contract: zone limits match the hub (cells under one 64 KB frame, 64 polyg
   assert.equal(thinPoly([1, 2, 3]).length, 3);
 });
 
-test("contract: a report with a photo passes the hub, an oversize or malformed photo does not", () => {
+test("hub accepts a report with a photo and rejects an oversize or malformed photo", () => {
   const big = "data:image/webp;base64," + "A".repeat(PHOTO_MAX - 30);
   const e = mk({ photo: big });
   assert.equal(ask(initialDoc(0), { t: "log.append", entry: e }).nack, undefined);
@@ -177,4 +177,9 @@ test("lock.release without a fence is refused by the hub, so a provisional lock 
 
 test("markerOf takes a section label function so the map plate is translated", () => {
   assert.equal(markerOf(mk({ section: "env_change" }), null, (s) => `T(${s})`).sub, "EV1 · T(env_change)");
+});
+
+test("map.js strokes() needs dash arrays: log.js must never pass a dash string (E2E0-1)", async () => {
+  const { readFileSync } = await import("node:fs");
+  assert.doesNotMatch(readFileSync(new URL("./log.js", import.meta.url), "utf8"), /dash:\s*"/);
 });

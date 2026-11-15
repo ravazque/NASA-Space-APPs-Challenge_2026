@@ -206,7 +206,7 @@ function drawMap() {
   const { rows, cols } = grid(), doc = state.doc, list = listEntries(doc).filter((x) => !x.superseded).map((x) => x.e);
   m.markers?.("log:entries", list.map((e) => markerOf(e, () => selectEntry(e.id), (s) => t(`log.sec.${s}`))));
   const devs = list.filter((e) => e.section === "route_deviation" && e.status !== "resolved" && e.data?.path?.length > 1).map((e) => e.data.path);
-  m.lines?.("log:deviations", devs.length ? devs : null, { token: "--ink", width: 2, halo: true, dash: "6 4" });
+  m.lines?.("log:deviations", devs.length ? devs : null, { token: "--ink", width: 2, halo: true, dash: [6, 4] });
   const locks = Object.values(doc.locks ?? {}), mine = (l) => l.holder?.deviceId === me().deviceId;
   const zones = locks.filter((l) => l.kind === "zone"), routes = locks.filter((l) => l.kind === "route" && !mine(l) && l.cells?.length > 1);
   const mask = (ls) => {
@@ -218,8 +218,8 @@ function drawMap() {
   const others = zones.filter((l) => !mine(l)), own = zones.filter(mine);
   m.outline?.("log:locks", mask(others), { token: "--red", width: 2.5, halo: true });
   m.pattern?.("log:locks-hatch", mask(others), { kind: "hatch-red" });
-  m.outline?.("log:locks-own", mask(own), { token: "--ink", width: 2, halo: true, dash: "6 4" });
-  m.lines?.("log:routes", routes.length ? routes.map((l) => l.cells) : null, { token: "--ink", width: 3, halo: true, dash: "2 6" });
+  m.outline?.("log:locks-own", mask(own), { token: "--ink", width: 2, halo: true, dash: [6, 4] });
+  m.lines?.("log:routes", routes.length ? routes.map((l) => l.cells) : null, { token: "--ink", width: 3, halo: true, dash: [2, 6] });
   const plates = [...others, ...routes].filter((l) => l.cells?.length).map((l) => ({
     id: l.target, cell: l.cells[l.cells.length >> 1], kind: "note", provisional: !!l.provisional,
     label: l.kind === "zone" ? t("log.plate.locked", { crew: l.holder?.crew ?? "?", reason: inMyLang(l.reason ?? "") }) : t("log.plate.reserved", { crew: l.holder?.crew ?? "?" }),
