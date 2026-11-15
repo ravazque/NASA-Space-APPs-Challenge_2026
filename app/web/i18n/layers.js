@@ -69,8 +69,8 @@ const N = {
                 ["Radiación ambiente", "Dosis de fondo: cifra de Curiosity RAD en el cráter Gale, a ~3 700 km (Hassler et al. 2014), usada aquí como sustituto de Jezero. Valor de modelo, no medido en Jezero; la cifra de 210 µGy/día no está verificada en esta versión.", "Curiosity RAD en Gale, como sustituto de Jezero (cifra no verificada aquí)"]],
   sky: [["Open sky", "Open sky (more sky = more cosmic-ray dose). Relative, not a dose.", "Sky view factor from the HiRISE DTM (Zakšek et al. 2011), 1 km horizon"],
         ["Cielo abierto", "Cielo abierto (más cielo = más dosis de rayos cósmicos). Relativo, no es una dosis.", "Factor de vista de cielo del DTM HiRISE (Zakšek et al. 2011), horizonte de 1 km"]],
-  protection: [["Crew protection", "EVA dose estimate (relative, not a measured dose) and the nearest shelter.", "EVA dose = rad/24 × EVA hours × route sky-view ratio · refuges = best-shielded 5 %"],
-               ["Protección de la tripulación", "Estimación de dosis de la EVA (relativa, no es una dosis medida) y refugio más cercano.", "Dosis de EVA = rad/24 × horas de EVA × razón de vista de cielo de la ruta · refugios = 5 % mejor protegido"]],
+  protection: [["Crew protection", "EVA dose estimate (relative, not a measured dose; scaled from the Curiosity RAD stand-in at Gale) and the nearest shelter.", "EVA dose = rad/24 × EVA hours × route sky-view ratio · refuges = best-shielded 5 %"],
+               ["Protección de la tripulación", "Estimación de dosis de la EVA (relativa, no es una dosis medida; escalada desde el proxy de Curiosity RAD en Gale) y refugio más cercano.", "Dosis de EVA = rad/24 × horas de EVA × razón de vista de cielo de la ruta · refugios = 5 % mejor protegido"]],
 };
 
 const en = {

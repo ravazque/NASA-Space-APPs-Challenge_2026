@@ -73,7 +73,7 @@ html, .viewer { scrollbar-color: var(--ink) var(--ground-2); }
 .z535 { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: var(--band-h) auto; border: var(--hair) solid var(--ink); background: var(--surface); }
 .z535 > .symbol { grid-row: 1 / 3; width: var(--symbol); border-right: var(--hair) solid var(--ink); display: grid; place-items: center; background: var(--surface); }
 .z535 > .symbol svg { width: 3rem; height: 3rem; }
-.z535 > .symbol svg:not(:has(use[href])) { display: none; }
+.z535 > .symbol svg:not([viewBox]):not(:has(use[href])) { display: none; }
 .z535 > .band, .z535 > .body { grid-column: 1 / -1; min-width: 0; }
 .z535 > .symbol:not([hidden]) ~ .band, .z535 > .symbol:not([hidden]) ~ .body { grid-column: 2; }
 .band { height: var(--band-h); display: flex; align-items: center; gap: var(--s2); padding: 0 var(--s3);

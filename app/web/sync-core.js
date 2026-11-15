@@ -37,7 +37,7 @@ function checkSetValue(path, v, g) {
   if (path === "settings.weights") return isObj(v) && WEIGHTS.every((k) => isNum(v[k], 0, 5)) ? { v: Object.fromEntries(WEIGHTS.map((k) => [k, v[k]])) } : null;
   if (path === "settings.evaStartLtst") return isNum(v, 0, 24) ? { v } : null;
   if (path === "clock") {
-    if (!isObj(v) || !["replay", "live", "scenario"].includes(v.mode) || !isNum(v.anchorUtcMs) || !isNum(v.anchorWallMs) || !isNum(v.rate, 0, 100000) || typeof v.paused !== "boolean") return null;
+    if (!isObj(v) || !["replay", "live", "scenario"].includes(v.mode) || !isNum(v.anchorUtcMs, -8.64e15, 8.64e15) || !isNum(v.anchorWallMs, 0, 8.64e15) || !isNum(v.rate, 0, 100000) || typeof v.paused !== "boolean") return null;
     if (v.replaySol != null && !Number.isInteger(v.replaySol)) return null;
     return { v: { mode: v.mode, replaySol: v.replaySol ?? null, anchorUtcMs: v.anchorUtcMs, anchorWallMs: v.anchorWallMs, rate: v.rate, paused: v.paused } };
   }
@@ -152,11 +152,25 @@ function reduce(doc, op, meta) {
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const meOf = (from) => ({ deviceId: from.deviceId, crew: from.crew });
 
+const GUARDED_SET = /^(assets\.|scenario$|env\.override$|clock$)/;
+const CLOCK_MIN = Date.UTC(1990, 0, 1), CLOCK_MAX = Date.UTC(2200, 0, 1);
+function clockSane(v, nowMs) {
+  if (Math.abs(v.anchorWallMs - nowMs) > 864e5) return false;
+  if (v.mode === "replay") return true;
+  const u = v.paused ? v.anchorUtcMs : v.anchorUtcMs + (nowMs - v.anchorWallMs) * v.rate;
+  return u >= CLOCK_MIN && u <= CLOCK_MAX;
+}
+const MAX_ZONES = 8;
+
 export function decide(doc, msg, from, nowMs, env = {}) {
   const r = check(msg?.op, env.grid);
   if (r.err) return { nack: "invalid" };
   const op = r.op;
-  if (op.t === "set") return { ops: [op] };
+  if (op.t === "set") {
+    if (env.guarded && GUARDED_SET.test(op.path) && from.role !== "base" && !from.sim) return { nack: "forbidden" };
+    if (op.path === "clock" && !clockSane(op.v, nowMs)) return { nack: "invalid" };
+    return { ops: [op] };
+  }
 
   if (op.t === "log.append") {
     if (!op.entry.id.startsWith(`${from.deviceId}:`)) return { nack: "forbidden" };
@@ -181,6 +195,7 @@ export function decide(doc, msg, from, nowMs, env = {}) {
     if (!own) return { nack: "forbidden" };
     const cur = doc.locks[op.target];
     if (op.kind !== "route" && cur && !mine(cur.holder.deviceId)) return { nack: "held", holder: cur.holder };
+    if (op.kind === "zone" && !cur && !from.sim && Object.values(doc.locks).filter((L) => L.kind === "zone" && mine(L.holder.deviceId)).length >= MAX_ZONES) return { nack: "limit" };
     if (op.kind === "zone") {
       const mineSet = new Set(op.cells);
       for (const L of Object.values(doc.locks)) {

@@ -13,8 +13,8 @@ test("every dictionary has the same keys in en and es", async () => {
   for (const f of files) {
     const d = (await import(new URL(f, dir))).default, en = Object.keys(d.en ?? {}).sort(), es = Object.keys(d.es ?? {}).sort();
     assert.deepEqual(en, es, `${f}: en/es keys differ`);
-    const lane = f.replace(".js", "");
-    if (lane !== "core") for (const k of en) assert.ok(k.startsWith(`${lane}.`), `${f}: key "${k}" must start with "${lane}."`);
+    const section = f.replace(".js", "");
+    if (section !== "core") for (const k of en) assert.ok(k.startsWith(`${section}.`) || k.startsWith("txt."), `${f}: key "${k}" must start with "${section}." (or "txt." for stored free text)`);
     register(d);
   }
   assert.equal(Object.keys(DICT.en).length, Object.keys(DICT.es).length);

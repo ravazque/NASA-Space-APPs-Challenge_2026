@@ -8,7 +8,7 @@ JAVA_HOME    ?= $(firstword $(wildcard /opt/homebrew/opt/openjdk@21 /usr/local/o
 ANDROID_HOME ?= /opt/homebrew/share/android-commandlinetools
 APK          := android/app/build/outputs/apk/debug/app-debug.apk
 
-.PHONY: help up serve hub sim test e2e data tiles android-sync apk clean deps hub-deps android-sdk
+.PHONY: help up serve hub sim test data tiles android-sync apk clean deps hub-deps android-sdk
 
 help: ## List the commands
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-13s %s\n", $$1, $$2}'
@@ -19,20 +19,16 @@ serve: ## Serve the app on :8000 without sync (solo mode)
 	@echo "→ ARIADNE on http://localhost:$(PORT)  (solo mode · ?lang=es for Spanish)"
 	@python3 -m http.server -d app/web $(PORT)
 
-hub: hub-deps ## Start the LAN hub on :8090: app, sync, QR to join
-	node app/hub/server.mjs --port $(HUB_PORT)
+hub: hub-deps ## Start the LAN hub on :8090: app, sync, QR (TOKEN=secret protects the Base role)
+	node app/hub/server.mjs --port $(HUB_PORT) $(if $(TOKEN),--token $(TOKEN))
 
 sim: hub-deps ## Hub + simulated crew, rover and dust storm (SIM=storm_eva)
-	node app/hub/server.mjs --port $(HUB_PORT) --sim $(SIM) --data app/hub/data-sim --reset
+	node app/hub/server.mjs --port $(HUB_PORT) --sim $(SIM) --data app/hub/data-sim --reset $(if $(TOKEN),--token $(TOKEN))
 
-test: ## Node unit tests: engine, Mars24, environment, sync, locks, log, profiles, i18n
+test: hub-deps ## Node tests: unit (engine, Mars24, env, sync, locks, log, profiles, i18n) + LAN e2e on a free port (~15 s)
 	@command -v node >/dev/null || { echo "! node is not installed (Node 20+ needed)"; exit 1; }
-	@[ -d app/hub/node_modules ] || echo "- hub tests skipped: run 'make hub-deps' first"
+	@[ -d app/hub/node_modules ] || echo "- hub tests and LAN e2e skipped: no app/hub/node_modules (run 'make hub-deps')"
 	node --test $(wildcard app/web/*.test.mjs) $$([ -d app/hub/node_modules ] && ls app/hub/*.test.mjs 2>/dev/null)
-
-e2e: hub-deps node_modules ## Playwright: two browser contexts through a test hub on :8091
-	npx playwright install chromium
-	npx playwright test
 
 data: deps ## Rebuild data from NASA sources (needs network): grid, MEDA sols, terrain
 	cd app/pipeline && ../.venv/bin/python fetch_data.py && ../.venv/bin/python fetch_pov.py \

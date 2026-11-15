@@ -1,7 +1,7 @@
 export default {
   en: {
-    "map.canvas": "Jezero map. Drag or arrow keys pan, plus and minus zoom. Enter sets the destination at the cross; Shift+Enter sets I'm here.",
-    "map.hint": "Click or tap the map: new destination · Drag, wheel or pinch: pan and zoom · Arrows pan · Enter: destination at the cross · Shift+Enter: I'm here",
+    "map.canvas": "Jezero map. Drag or arrow keys pan, plus and minus zoom. Enter sets the destination at the cross; Shift+Enter sets I'm here. Alt plus arrows move the destination 20 m, Alt+Shift 200 m.",
+    "map.hint": "Click or tap the map: new destination · Drag, wheel or pinch: pan and zoom · Arrows pan · Enter: destination at the cross · Shift+Enter: I'm here · Alt+arrows: move destination 20 m (Shift: 200 m)",
     "map.zoom_in": "Zoom in", "map.zoom_out": "Zoom out", "map.fit": "Fit the whole area", "map.locate": "Locate me",
     "map.layers": "Layers", "map.report": "Report to the field log",
     "map.env_beyond": "Safe-return limit beyond view",
@@ -12,8 +12,8 @@ export default {
     "map.pick.undo": "Undo point", "map.pick.done": "Done", "map.pick.cancel": "Cancel",
   },
   es: {
-    "map.canvas": "Mapa de Jezero. Arrastra o usa las flechas para moverte, más y menos para el zoom. Intro fija el destino en la cruz; Mayús+Intro fija Estoy aquí.",
-    "map.hint": "Clic o toque en el mapa: nuevo destino · Arrastra, rueda o pellizca: mover y zoom · Flechas mueven · Intro: destino en la cruz · Mayús+Intro: estoy aquí",
+    "map.canvas": "Mapa de Jezero. Arrastra o usa las flechas para moverte, más y menos para el zoom. Intro fija el destino en la cruz; Mayús+Intro fija Estoy aquí. Alt y flechas mueven el destino 20 m; Alt+Mayús, 200 m.",
+    "map.hint": "Clic o toque en el mapa: nuevo destino · Arrastra, rueda o pellizca: mover y zoom · Flechas mueven · Intro: destino en la cruz · Mayús+Intro: estoy aquí · Alt+flechas: mueve el destino 20 m (Mayús: 200 m)",
     "map.zoom_in": "Acercar", "map.zoom_out": "Alejar", "map.fit": "Ver toda el área", "map.locate": "Localizarme",
     "map.layers": "Capas", "map.report": "Anotar en el diario de campo",
     "map.env_beyond": "Límite de vuelta segura fuera de la vista",

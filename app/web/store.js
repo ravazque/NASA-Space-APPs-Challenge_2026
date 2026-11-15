@@ -1,10 +1,11 @@
 import { initialDoc } from "./sync-core.js";
 
-const rid = () => { try { return localStorage.getItem("ariadne.device") || [...crypto.getRandomValues(new Uint8Array(4))].map((b) => b.toString(16).padStart(2, "0")).join(""); } catch { return "00000000"; } };
+const rnd = () => [...crypto.getRandomValues(new Uint8Array(4))].map((b) => b.toString(16).padStart(2, "0")).join("");
+const rid = () => { try { return localStorage.getItem("ariadne.device") || rnd(); } catch { return rnd(); } };
 
 export const state = {
   data: null,
-  ui: { tab: "plan", drawer: false, raster: "none", show: {}, profile: "foot", follow: true, me: { deviceId: rid(), crew: "EV1", role: "crew" }, selected: null },
+  ui: { tab: "plan", drawer: false, raster: "none", show: {}, profile: "foot", follow: false, me: { deviceId: rid(), crew: "EV1", role: "crew" }, selected: null },
   doc: initialDoc(Date.now()),
   presence: {},
   net: { status: "solo", hub: null, rttMs: null, offsetMs: 0, peers: 0, pending: 0 },

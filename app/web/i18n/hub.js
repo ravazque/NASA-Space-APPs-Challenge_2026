@@ -1,5 +1,7 @@
 export default {
   en: {
+    "txt.Fresh scarp, loose blocks": "Fresh scarp, loose blocks", "txt.Dust rising, visibility down": "Dust rising, visibility down", "txt.Afternoon wind": "Afternoon wind", "txt.Regional dust storm": "Regional dust storm", "txt.Storm subsiding": "Storm subsiding",
+    "txt.Supply cache": "Supply cache", "txt.Core drill": "Core drill", "txt.Drilling": "Drilling",
     "hub.chip.synced": "SYNCED", "hub.chip.crew": "{n} crew", "hub.chip.connecting": "RECONNECTING…", "hub.chip.offline": "OFFLINE", "hub.chip.pending": "{n} pending",
     "hub.chip.solo": "SOLO", "hub.chip.connect": "Connect", "hub.chip.ms": "{ms} ms", "hub.chip.title": "Field network: open connection settings",
     "hub.dlg.title": "Field network", "hub.dlg.close": "Close", "hub.dlg.you": "You", "hub.dlg.callsign": "Callsign", "hub.dlg.role": "Role",
@@ -17,10 +19,12 @@ export default {
     "hub.los": "LOS {n} min", "hub.online": "online", "hub.inuse": "IN USE · {crew}", "hub.sim": "simulated",
     "hub.pick.me": "Tap the map where you are", "hub.replaced": "Another window took over this device. Reload to reconnect.",
     "hub.nack.held": "Lock refused: held by {who}", "hub.nack.overlap": "Zone refused: overlaps a zone held by {who}", "hub.nack.forbidden": "Not allowed for your role",
-    "hub.nack.invalid": "The hub rejected that change", "hub.nack.unknown": "That item no longer exists",
+    "hub.nack.invalid": "The hub rejected that change", "hub.nack.unknown": "That item no longer exists", "hub.nack.limit": "Too many requests from this device: wait a moment", "hub.badtoken": "The Base role needs the join token: open the hub address from its QR code or add ?token=...",
     "hub.sim.error": "Could not start scenario {name}",
   },
   es: {
+    "txt.Fresh scarp, loose blocks": "Escarpe reciente, bloques sueltos", "txt.Dust rising, visibility down": "Sube el polvo, baja la visibilidad", "txt.Afternoon wind": "Viento de tarde", "txt.Regional dust storm": "Tormenta de polvo regional", "txt.Storm subsiding": "La tormenta amaina",
+    "txt.Supply cache": "Depósito de suministros", "txt.Core drill": "Perforadora de testigos", "txt.Drilling": "Perforando",
     "hub.chip.synced": "SINCRONIZADO", "hub.chip.crew": "{n} tripulantes", "hub.chip.connecting": "RECONECTANDO…", "hub.chip.offline": "SIN CONEXIÓN", "hub.chip.pending": "{n} pendientes",
     "hub.chip.solo": "SOLO", "hub.chip.connect": "Conectar", "hub.chip.ms": "{ms} ms", "hub.chip.title": "Red de campo: abrir los ajustes de conexión",
     "hub.dlg.title": "Red de campo", "hub.dlg.close": "Cerrar", "hub.dlg.you": "Tú", "hub.dlg.callsign": "Indicativo", "hub.dlg.role": "Rol",
@@ -38,7 +42,7 @@ export default {
     "hub.los": "LOS {n} min", "hub.online": "en línea", "hub.inuse": "EN USO · {crew}", "hub.sim": "simulado",
     "hub.pick.me": "Toca el mapa donde estás", "hub.replaced": "Otra ventana ha tomado este dispositivo. Recarga para reconectar.",
     "hub.nack.held": "Bloqueo rechazado: lo tiene {who}", "hub.nack.overlap": "Zona rechazada: se solapa con una zona de {who}", "hub.nack.forbidden": "No permitido para tu rol",
-    "hub.nack.invalid": "El hub rechazó ese cambio", "hub.nack.unknown": "Ese elemento ya no existe",
+    "hub.nack.invalid": "El hub rechazó ese cambio", "hub.nack.unknown": "Ese elemento ya no existe", "hub.nack.limit": "Demasiadas peticiones de este dispositivo: espera un momento", "hub.badtoken": "El rol Base necesita el token de acceso: abre la dirección del hub desde su QR o añade ?token=...",
     "hub.sim.error": "No se pudo iniciar el escenario {name}",
   },
 };

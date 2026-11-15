@@ -1,5 +1,5 @@
 import { state, set, on } from "./store.js";
-import { t, apply } from "./i18n.js";
+import { t, apply, shown } from "./i18n.js";
 import { $, esc, tag } from "./ui.js";
 import { connect, disconnect, identify, hubNow } from "./sync.js";
 
@@ -119,7 +119,7 @@ function drawMap() {
   const doc = state.doc;
   const assets = Object.values(doc.assets ?? {}).filter((a) => Number.isInteger(a.cell)).map((a) => {
     const lock = doc.locks?.[`equip:${a.id}`];
-    return { id: `asset:${a.id}`, cell: a.cell, kind: a.kind, label: a.name, sub: lock ? t("hub.inuse", { crew: lock.holder.crew }) : undefined, provisional: !!lock?.provisional };
+    return { id: `asset:${a.id}`, cell: a.cell, kind: a.kind, label: shown(a.name), sub: lock ? t("hub.inuse", { crew: lock.holder.crew }) : undefined, provisional: !!lock?.provisional };
   });
   map.markers("hub:assets", assets.length ? assets : null);
 }

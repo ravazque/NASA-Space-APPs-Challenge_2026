@@ -1,5 +1,5 @@
 import { state, set, on } from "./store.js";
-import { t, num } from "./i18n.js";
+import { t, num, shown } from "./i18n.js";
 import { $, esc, tag } from "./ui.js";
 import { mars, solToUtc, clockUtc, utcAtLs, fmtHM } from "./marsclock.js";
 import { loadEnv, resolveEnv, at } from "./env.js";
@@ -195,7 +195,7 @@ function renderEnv() {
     const tg = x.v == null ? "" : x.tag;
     if (lastTag[k] !== tg) { lastTag[k] = tg; $(`et-${k}`).innerHTML = tg && tag(tg); }
     if (open.has(k)) {
-      const n = [x.note ? t(x.note, x.noteArgs ?? {}) : "", k === "wind" && vals.wind_dir.v != null ? t("clock.note.windConv") : ""].filter(Boolean).join(" "), url = /^https?:/.test(x.src ?? "");
+      const n = [x.note ? t(x.note, x.noteArgs?.label ? { ...x.noteArgs, label: shown(x.noteArgs.label) } : x.noteArgs ?? {}) : "", k === "wind" && vals.wind_dir.v != null ? t("clock.note.windConv") : ""].filter(Boolean).join(" "), url = /^https?:/.test(x.src ?? "");
       const html = `${esc(n)}${x.src ? ` <span class="clk-src">${esc(t("clock.env.src"))}: ${url ? `<a href="${esc(x.src)}" target="_blank" rel="noopener noreferrer">MEDA PDS</a>` : esc(x.src)}</span>` : ""}`;
       if ($(`en-${k}`).innerHTML !== html) $(`en-${k}`).innerHTML = html;
     }
@@ -230,7 +230,7 @@ function renderHazard() {
       <div class="symbol">${TRI}</div>
       <h2 class="band" id="hz-t"><span>${esc(t(hz.level >= 2 ? "clock.hz.danger" : "clock.hz.warning"))}</span></h2>
       <div class="body" aria-live="off"><span class="value" id="hz-val"></span> ${tag(hz.tag)}
-        <p class="detail">${hz.reasons.map((r) => esc(t(`clock.hz.r.${r}`))).join(" ")}${hz.label ? ` ${esc(hz.label)}` : ""}</p><p class="detail" id="hz-act"></p></div></section>`;
+        <p class="detail">${hz.reasons.map((r) => esc(t(`clock.hz.r.${r}`))).join(" ")}${hz.label ? ` ${esc(shown(hz.label))}` : ""}</p><p class="detail" id="hz-act"></p></div></section>`;
   }
   const w = (id, s) => { const e = $(id); if (e.textContent !== s) e.textContent = s; };
   w("hz-val", t("clock.hz.line", { tau: num(hz.tau, 1), wind: num(hz.wind_ms, 0) }));

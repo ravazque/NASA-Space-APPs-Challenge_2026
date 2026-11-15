@@ -9,7 +9,6 @@ const DEG_M = (Math.PI * 3396190) / 180;
 const css = getComputedStyle(document.documentElement);
 const tok = (n) => (typeof n === "string" && n.startsWith("--") ? css.getPropertyValue(n).trim() : n);
 const BLANK = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
-const ATTRIB = "HiRISE 25 cm mosaic: NASA/JPL/University of Arizona, via NASA Mars Trek";
 const PANES = { base: 200, raster: 250, graticule: 260, wash: 300, pattern: 350, outline: 400, lines: 450, markers: 600, plates: 650 };
 
 let map, host, rows, cols, data, B, items = new Map(), hidden = new Set(), legacyOff = false, picker = null, ui = {};
@@ -352,6 +351,7 @@ const api = {
   get el() { return host; },
 };
 
+const ARROW = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
 const centerCell = () => { const c = map.getCenter(); return latLngToCell(c.lat, c.lng); };
 const ICON = {
   layers: '<path d="M12 3L22 9L12 15L2 9Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2 13.5L12 19.5L22 13.5" fill="none" stroke="currentColor" stroke-width="2"/>',
@@ -381,7 +381,7 @@ export async function init(c) {
 
   const tb = L.latLngBounds([B[0][0] - 0.005, B[0][1] - 0.005], [B[1][0] + 0.005, B[1][1] + 0.005]), fb = L.imageOverlay("data/hirise_aoi.webp", B, { pane: "base", interactive: false, zIndex: 0 });
   fb.on("error", () => { $("hint").textContent = `${t("map.nobg")} ${t("map.hint")}`; }); fb.addTo(map);
-  L.tileLayer("tiles/{z}/{y}/{x}.webp", { pane: "base", minNativeZoom: 13, maxNativeZoom: 16, maxZoom: 19, bounds: tb, errorTileUrl: BLANK, attribution: ATTRIB, zIndex: 1 }).addTo(map);
+  L.tileLayer("tiles/{z}/{y}/{x}.webp", { pane: "base", minNativeZoom: 13, maxNativeZoom: 16, maxZoom: 19, bounds: tb, errorTileUrl: BLANK, zIndex: 1 }).addTo(map);
   L.tileLayer("tiles/{z}/{y}/{x}.webp", { pane: "base", minZoom: 17, minNativeZoom: 17, maxNativeZoom: 17, maxZoom: 19, bounds: tb, errorTileUrl: BLANK, zIndex: 2 }).addTo(map);
   new GratLayer({ pane: "graticule", bounds: L.latLngBounds(B).pad(0.25), tileSize: 256 }).addTo(map);
 
@@ -414,6 +414,15 @@ export async function init(c) {
   map.on("move zoom", () => { drawGrat(); });
   map.on("zoom zoomend", drawScale);
   host.addEventListener("keydown", (e) => {
+    const step = ARROW[e.key];
+    if (e.target === host && e.altKey && step) {
+      const g = state.plan.goal;
+      if (!Number.isInteger(g)) return;
+      e.preventDefault();
+      const k = e.shiftKey ? 10 : 1, r = Math.min(rows - 1, Math.max(0, Math.floor(g / cols) + step[0] * k)), c = Math.min(cols - 1, Math.max(0, (g % cols) + step[1] * k));
+      setGoal(r * cols + c);
+      return;
+    }
     if (e.target !== host || e.key !== "Enter") return;
     const cell = centerCell(); if (cell < 0) return;
     e.preventDefault();

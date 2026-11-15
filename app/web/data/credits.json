@@ -108,6 +108,34 @@
    ],
    "credit": "NASA/JPL-Caltech (MSSS, ASU where noted); exact credit, date and source per photo in pov/pov.json",
    "url": "https://photojournal.jpl.nasa.gov/"
+  },
+  {
+   "id": "mars24",
+   "what": "Mars clock (LMST, LTST, Ls, solar elevation): NASA GISS Mars24 algorithm",
+   "files": [
+    "marsclock.js"
+   ],
+   "credit": "NASA Goddard Institute for Space Studies, Mars24 Sunclock (Allison & McEwen 2000)",
+   "url": "https://www.giss.nasa.gov/tools/mars24/"
+  },
+  {
+   "id": "leaflet",
+   "what": "Map engine: Leaflet 1.9.4, vendored (BSD-2-Clause)",
+   "files": [
+    "vendor/leaflet"
+   ],
+   "credit": "Leaflet, Volodymyr Agafonkin and contributors",
+   "url": "https://leafletjs.com/"
+  },
+  {
+   "id": "radproxy",
+   "what": "Ambient radiation proxy: Curiosity RAD dose rate at Gale crater (no RAD at Jezero)",
+   "files": [
+    "env/meda_sols.json: ambient_rad"
+   ],
+   "credit": "Hassler et al. 2014, Science 343, 1244797 (Curiosity RAD, NASA/JPL-Caltech/SwRI)",
+   "url": "https://doi.org/10.1126/science.1244797",
+   "doi": "10.1126/science.1244797"
   }
  ]
 }

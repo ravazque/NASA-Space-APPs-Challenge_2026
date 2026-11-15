@@ -1,5 +1,5 @@
 import { state, set, on, emit } from "./store.js";
-import { t, num, pick } from "./i18n.js";
+import { t, num, pick, shown } from "./i18n.js";
 import { $, h, esc, tag } from "./ui.js";
 import { PROFILES, prepareExtra, limits, passMask, hardMask, share } from "./profiles.js";
 import { stateAt } from "./pathfind.js";
@@ -29,7 +29,7 @@ export const CATALOGUE = [
   { id: "rocks", cat: "topo", kind: "vector", tag: "DERIVED", file: "terrain_extra.json", unit: "", legend: "dots", map: ["layers:rocks"] },
   { id: "confidence", cat: "topo", kind: "raster", tag: "DERIVED", file: "jezero_cost_grid.json", unit: "", legend: "ramp", grid: "confidence", dp: 2 },
 
-  { id: "geo", cat: "geo", kind: "vector", tag: "MEASURED", file: "geounits.json", unit: "", legend: "geo", map: ["layers:geo"] },
+  { id: "geo", cat: "geo", kind: "vector", tag: "DERIVED", file: "geounits.json", unit: "", legend: "geo", map: ["layers:geo"] },
   { id: "minerals", cat: "geo", kind: "raster", tag: "DERIVED", file: "jezero_cost_grid.json", unit: "", legend: "ramp", grid: "science", dp: 2 },
   { id: "ti", cat: "geo", kind: "raster", tag: "DERIVED", file: "jezero_cost_grid.json", unit: "SI", legend: "ramp", grid: "thermal_inertia_si", dp: 0 },
   { id: "science", cat: "geo", kind: "vector", tag: "MEASURED + REPORTED", file: "science.json", unit: "", legend: "site", map: ["layers:science"], on: true },
@@ -48,7 +48,7 @@ export const CATALOGUE = [
   { id: "uv", cat: "rad", kind: "readout", tag: "MODEL", file: "env.js", unit: "W/m²", dp: 1 },
   { id: "ambient_rad", cat: "rad", kind: "readout", tag: "MODEL", file: "env/env_constants.json", unit: "µGy/day", dp: 0 },
   { id: "sky", cat: "rad", kind: "raster", tag: "DERIVED", file: "jezero_cost_grid.json", unit: "", legend: "ramp", grid: "svf", dp: 2 },
-  { id: "protection", cat: "rad", kind: "readout", tag: "DERIVED", file: "jezero_cost_grid.json", unit: "µGy", dp: 0 },
+  { id: "protection", cat: "rad", kind: "readout", tag: "MODEL", file: "jezero_cost_grid.json", unit: "µGy", dp: 0 },
 ];
 export const BY = Object.fromEntries(CATALOGUE.map((c) => [c.id, c]));
 
@@ -409,7 +409,7 @@ function evaDose() {
   const svf = d.layers.svf;
   svfMean ??= svf.reduce((a, b) => a + b, 0) / svf.length;
   const onRoute = route.reduce((a, c) => a + svf[c], 0) / route.length;
-  return { uGy: (rad / 24) * cfg.eva_duration_h * (onRoute / svfMean), tag: "DERIVED" };
+  return { uGy: (rad / 24) * cfg.eva_duration_h * (onRoute / svfMean), tag: "MODEL" };
 }
 export function readout(id, vs) {
   const it = BY[id];
@@ -433,7 +433,7 @@ function renderValues() {
       e = q && { tag: q.tag }; txt = q ? `${num(q.uGy, 0)} µGy${sp && sp.kind !== "home" ? ` · ${t("layers.protect.shelter", { min: num(sp.min, 0) })}` : ""}` : "—";
     } else if (id === "dust_storm") { const lv = state.env?.hazard?.level; txt = Number.isFinite(lv) ? `${lv} · ${t(`layers.hazard.${lv}`)}` : "—"; }
     else ({ e, txt } = readout(id, state.env?.values));
-    const html = `<span class="num">${esc(txt)}</span>${e?.tag ? tag(e.tag) : ""}`, title = e?.note ? `${t("layers.openenv")} · ${t(e.note, e.noteArgs ?? {})}` : t("layers.openenv");
+    const html = `<span class="num">${esc(txt)}</span>${e?.tag ? tag(e.tag) : ""}`, title = e?.note ? `${t("layers.openenv")} · ${t(e.note, e.noteArgs?.label ? { ...e.noteArgs, label: shown(e.noteArgs.label) } : e.noteArgs ?? {})}` : t("layers.openenv");
     if (b._h !== html) b.innerHTML = b._h = html;
     if (b.title !== title) b.title = title;
   }

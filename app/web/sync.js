@@ -21,6 +21,7 @@ const clean = (s, d) => (String(s ?? "").replace(/[^\w .-]/g, "").trim().slice(0
 
 function loadIdentity() {
   const win = q.has("crew");
+  if (q.get("token")) lsWrite("ariadne.token", q.get("token").slice(0, 64));
   try { store = win ? sessionStorage : localStorage; } catch { store = null; }
   const me = state.ui.me;
   let deviceId = rd("ariadne.device");
@@ -116,12 +117,14 @@ function open() {
   w.onclose = (e) => end(e.code);
   w.onerror = () => end(1006);
 }
-function hello() { send({ t: "hello", v: 1, ...me(), role: state.ui.me.role, kind: state.ui.me.kind, lastSeq: confirmed?.seq ?? 0 }); }
+const token = () => (q.get("token") ?? lsRead("ariadne.token") ?? "").slice(0, 64);
+function hello() { send({ t: "hello", v: 1, ...me(), role: state.ui.me.role, kind: state.ui.me.kind, lastSeq: confirmed?.seq ?? 0, token: token() || undefined }); }
 
 function onClosed(code) {
   samples = [];
   netSet({ rttMs: null });
   if (stopped) return;
+  if (code === 4403) { stopped = true; netSet({ status: "offline" }); toast(t("hub.badtoken"), "warning"); return; }
   if (code === 4001) { stopped = true; netSet({ status: "offline" }); toast(t("hub.replaced"), "warning"); return; }
   scheduleRetry();
 }

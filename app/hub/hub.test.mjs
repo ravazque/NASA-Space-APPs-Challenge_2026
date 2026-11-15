@@ -224,7 +224,7 @@ test("13. latency: ping RTT and op propagation A -> B over loopback (reported, n
   console.log(`  latency over ${N} samples (loopback): ping RTT p50 ${q(rtts, 0.5)} ms p95 ${q(rtts, 0.95)} ms · op A->B p50 ${q(prop, 0.5)} ms p95 ${q(prop, 0.95)} ms`);
   assert.ok(Number(q(prop, 0.95)) < 100);
   await a.close(); await b.close();
-}));
+}, { logPerMin: Infinity }));
 
 test("14. scenario runner: virtual crew move, the fault is logged as SIMULATED, the drill lock is held and released", async () => {
   const scn = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../web/data/scenarios/storm_eva.json"), "utf8"));
@@ -319,4 +319,67 @@ test("22. static files carry ETag + Last-Modified, answer 304, and big JSON is g
   assert.equal((await req(p, { "if-none-match": plain.headers.etag })).status, 304);
   assert.equal((await req(p, { "if-modified-since": plain.headers["last-modified"] })).status, 304);
   assert.equal((await req(p, { "if-none-match": '"other"' })).status, 200);
+}));
+
+test("23. Origin check: another site is refused, this hub's own origin and the Android WebView are accepted", () => withHub(async (hub) => {
+  const tryOrigin = (origin) => new Promise((ok) => { const ws = new WebSocket(`ws://127.0.0.1:${hub.port}/sync`, { headers: origin ? { Origin: origin } : {} }); ws.once("open", () => { ws.close(); ok(true); }); ws.once("error", () => ok(false)); });
+  assert.equal(await tryOrigin("http://evil.example"), false);
+  assert.equal(await tryOrigin("http://192.168.1.50:8090"), false);
+  assert.equal(await tryOrigin(`http://127.0.0.1:${hub.port}`), true);
+  for (const o of ["http://localhost", "https://localhost", "capacitor://localhost", null]) assert.equal(await tryOrigin(o), true, String(o));
+}));
+
+test("24. a plain crew device cannot change the shared world; the base can; a skewed clock is refused", () => withHub(async (hub) => {
+  const [a] = await connect(hub, "a1"), [base] = await connect(hub, "ba", { role: "base", crew: "BASE" });
+  const now = Date.now(), ck = { mode: "scenario", replaySol: null, anchorUtcMs: Date.UTC(2026, 5, 1), anchorWallMs: now, rate: 600, paused: false };
+  const res = async (c, op) => { const cid = c.op(op); return (await c.waitFor((m) => (m.t === "ack" || m.t === "nack") && m.cid === cid)); };
+  assert.equal((await res(a, { t: "set", path: "assets.base", v: null })).reason, "forbidden");
+  assert.equal((await res(a, { t: "set", path: "clock", v: ck })).reason, "forbidden");
+  assert.equal((await res(a, { t: "set", path: "settings.evaStartLtst", v: 10 })).t, "ack");
+  assert.equal((await res(base, { t: "set", path: "clock", v: ck })).t, "ack");
+  assert.equal((await res(base, { t: "set", path: "clock", v: { ...ck, anchorUtcMs: 8.64e15, anchorWallMs: 0, rate: 100000 } })).reason, "invalid");
+  assert.equal((await res(base, { t: "set", path: "clock", v: { ...ck, anchorUtcMs: 8.64e15 } })).reason, "invalid");
+  assert.equal((await res(base, { t: "set", path: "clock", v: { ...ck, anchorWallMs: now - 2 * 864e5 } })).reason, "invalid");
+  assert.equal(hub.doc.assets.base.kind, "base");
+  await Promise.all([a.close(), base.close()]);
+}));
+
+test("25. --token: the Base role is refused without it (close 4403) and accepted with it; /join stays on the hub computer", () => withHub(async (hub) => {
+  const hello = (token) => new Promise((ok) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${hub.port}/sync`);
+    ws.once("open", () => ws.send(JSON.stringify({ t: "hello", v: 1, deviceId: "ba", crew: "BASE", role: "base", kind: "base", lastSeq: 0, token })));
+    ws.once("close", (code) => ok(code)); ws.on("message", (d) => { if (JSON.parse(d).t === "snapshot") { ws.close(); ok("snapshot"); } });
+  });
+  assert.equal(await hello(undefined), 4403);
+  assert.equal(await hello("wrong"), 4403);
+  assert.equal(await hello("s3cret"), "snapshot");
+  const [a, snap] = await connect(hub, "a1");
+  assert.ok(snap.doc);
+  assert.match((await get(hub, "/join")).body, /token=s3cret/);
+  await a.close();
+}, { token: "s3cret" }));
+
+test("26. quotas: 9th zone lock and 21st log entry in a minute from one device are refused", () => withHub(async (hub) => {
+  const [a] = await connect(hub, "a1");
+  const res = async (op) => { const cid = a.op(op); return (await a.waitFor((m) => (m.t === "ack" || m.t === "nack") && m.cid === cid)); };
+  for (let i = 1; i <= 8; i++) assert.equal((await res(zone("a1", i, [100 + i], { sticky: true }))).t, "ack");
+  assert.equal((await res(zone("a1", 9, [200], { sticky: true }))).reason, "limit");
+  assert.equal((await res(zone("a1", 1, [101, 102], { sticky: true }))).t, "ack", "re-sending an existing zone is not a new one");
+  for (let i = 1; i <= 20; i++) assert.equal((await res({ t: "log.append", entry: entry(`a1:${i}`) })).t, "ack");
+  assert.equal((await res({ t: "log.append", entry: entry("a1:21") })).reason, "limit");
+  await a.close();
+}, { logPerMin: 20 }));
+
+test("27. a device id held by a live socket from another address cannot be taken over", () => withHub(async (hub) => {
+  const [a] = await connect(hub, "a1");
+  const intruder = await new Promise((ok) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${hub.port}/sync`, { localAddress: "127.0.0.2" });
+    ws.once("error", () => ok("no-127.0.0.2"));
+    ws.once("open", () => ws.send(JSON.stringify({ t: "hello", v: 1, deviceId: "a1", crew: "X", role: "crew", kind: "astronaut", lastSeq: 0 })));
+    ws.once("close", (code) => ok(code));
+  });
+  if (intruder !== "no-127.0.0.2") { assert.equal(intruder, 4409); assert.equal(a.ws.readyState, 1, "the owner stays connected"); }
+  const [a2, snap] = await connect(hub, "a1");
+  assert.ok(snap.doc);
+  await Promise.all([a.close().catch(() => {}), a2.close()]);
 }));

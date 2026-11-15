@@ -14,6 +14,8 @@ let lang = (() => {
 export const getLang = () => lang;
 export const has = (key) => key in DICT[lang] || key in DICT.en;
 export const t = (key, v = {}) => (DICT[lang][key] ?? DICT.en[key] ?? key).replace(/\{(\w+)\}/g, (_, k) => v[k] ?? "");
+export const shown = (s) => (typeof s === "string" && has(`txt.${s}`) ? t(`txt.${s}`) : s);
+export const tEn = (key) => DICT.en[key] ?? key;
 export const num = (n, d = 0) => Number(n).toLocaleString(lang, { minimumFractionDigits: d, maximumFractionDigits: d }).replace(/^-/, "−");
 export const date = (iso, o = { day: "numeric", month: "short", year: "numeric" }) => new Date(iso).toLocaleDateString(lang, { ...o, timeZone: "UTC" });
 export const pick = (obj, base) => obj?.[`${base}_${lang}`] ?? obj?.[`${base}_en`] ?? obj?.[`${base}_es`] ?? obj?.[base] ?? "";

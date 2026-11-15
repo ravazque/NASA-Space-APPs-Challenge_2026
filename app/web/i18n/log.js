@@ -1,5 +1,7 @@
 export default {
   en: {
+    "txt.Geological fault": "Geological fault", "txt.Environment change": "Environment change", "txt.Route deviation": "Route deviation", "txt.Hazard": "Hazard", "txt.Sample": "Sample", "txt.Equipment": "Equipment", "txt.Note": "Note",
+    "txt.Route": "Route", "txt.Zone closed": "Zone closed", "txt.equipment": "Equipment in use",
     "log.new": "Report", "log.empty": "No reports yet. Use Report to log a fault, hazard, sample or change.",
     "log.filter.label": "Filter by section", "log.filter.all": "All",
     "log.sec.fault": "Geological fault", "log.sec.env_change": "Environment change", "log.sec.route_deviation": "Route deviation",
@@ -46,6 +48,8 @@ export default {
     "log.rr.same": "same length", "log.rr.dismiss": "Dismiss",
   },
   es: {
+    "txt.Geological fault": "Falla geológica", "txt.Environment change": "Cambio ambiental", "txt.Route deviation": "Desvío de ruta", "txt.Hazard": "Peligro", "txt.Sample": "Muestra", "txt.Equipment": "Equipo", "txt.Note": "Nota",
+    "txt.Route": "Ruta", "txt.Zone closed": "Zona cerrada", "txt.equipment": "Equipo en uso",
     "log.new": "Aviso", "log.empty": "Aún no hay avisos. Usa Aviso para anotar una falla, un peligro, una muestra o un cambio.",
     "log.filter.label": "Filtrar por sección", "log.filter.all": "Todos",
     "log.sec.fault": "Falla geológica", "log.sec.env_change": "Cambio ambiental", "log.sec.route_deviation": "Desvío de ruta",

@@ -12,7 +12,7 @@ const REFUGE_SVF_PERCENTILE = 0.05;
 const MARS_HOUR_S = SOL_S / 24;
 
 let ctx, d, rows, cols, cellM, cfg, layers, planLayers, habitat, cheyava, refugeSvf;
-let spe = null, speFrom = -1, lastGoal = -1, manualS = 0;
+let spe = null, speFrom = -1, lastGoal = -1, manualS = null;
 let cache = { key: null }, routeCache = { key: null }, baseEnergy = {}, penalty = {}, forbidPrev = null;
 
 const goalCell = () => { const g = state.doc.settings.goal; return Number.isInteger(g) && g >= 0 && g < rows * cols ? g : cheyava; };
@@ -64,8 +64,9 @@ function recompute(flags = {}) {
   if (!same) forbidPrev = forbid;
   const reroute = flags.overlay && prev.route?.length ? detectReroute(prev, route, stats, mult, flags.prevDoc) : null;
   P = { profile, goal, route, stats, tl, turn, baseSafe, forbidWhy, mult, eFoot: f.eFoot, forbid: forbidPrev, reroute, habitat, cheyava };
-  if (goal !== lastGoal) { lastGoal = goal; if (!state.ui.follow) set("ui", { follow: true }); }
-  clearSpe(true);
+  const goalChanged = goal !== lastGoal;
+  if (goalChanged) { lastGoal = goal; manualS = null; }
+  if (goalChanged) clearSpe(true); else if (spe) buildSpe();
   refresh(true);
   $("reset-goal").hidden = goal === cheyava;
 }
@@ -87,9 +88,8 @@ function evaSeconds() {
   const dur = cfg.eva_duration_h * 3600, ck = state.clock;
   if (state.ui.follow) {
     if (ck?.utcMs != null && Number.isFinite(ck.ltst)) return Math.min(dur, Math.max(0, (ck.ltst - state.doc.settings.evaStartLtst) * MARS_HOUR_S));
-    return P.route?.length ? Math.min(dur, Math.ceil(P.tl.tArr / 300) * 300) : 0;
   }
-  return manualS;
+  return manualS ?? (P.route?.length ? Math.min(dur, Math.ceil(P.tl.tArr / 300) * 300) : 0);
 }
 
 function refresh(full) {
@@ -209,7 +209,7 @@ function renderSpe() {
 
 function renderScenario() {
   const el = $("scenario"), meda = d.meda;
-  if (!meda) { el.textContent = "EVA · sol 1210 · Jezero"; el.removeAttribute("title"); return; }
+  if (!meda) { el.textContent = t("scenario.fallback"); el.removeAttribute("title"); return; }
   const { start_h: a, end_h: b } = meda.eva_window, hh = (v) => `${String(v).padStart(2, "0")}:00`;
   const air = meda.t_air_c.slice(a, b).filter((v) => v != null);
   const parts = [t("scenario.base", { sol: meda.sol, date: date(meda.date_utc) }), t("scenario.window", { start: hh(a), end: hh(b) })];
@@ -224,7 +224,6 @@ function renderAll() {
 }
 
 export function setGoal(cell) {
-  set("ui", { follow: true });
   submit({ t: "set", path: "settings.goal", v: cell === cheyava ? null : cell });
 }
 export const toggleSpe = simulateSpe;
@@ -238,9 +237,19 @@ export async function init(c) {
   refugeSvf = sv[Math.floor(sv.length * REFUGE_SVF_PERCENTILE)];
   $("elapsed").max = cfg.eva_duration_h * 60;
 
-  let pending = 0;
+  let timer = 0, lastSent = 0;
   const weightsFromUi = () => Object.fromEntries(WEIGHTS.map((w) => [w, Number($(`w-${w}`).value)]));
-  for (const w of WEIGHTS) $(`w-${w}`).addEventListener("input", () => { renderOutputs(); pending ||= requestAnimationFrame(() => { pending = 0; submit({ t: "set", path: "settings.weights", v: weightsFromUi() }); }); });
+  const flushWeights = () => {
+    clearTimeout(timer); timer = 0;
+    const v = weightsFromUi(), j = JSON.stringify(v);
+    if (j === JSON.stringify(state.doc.settings.weights)) return;
+    lastSent = performance.now();
+    submit({ t: "set", path: "settings.weights", v });
+  };
+  for (const w of WEIGHTS) {
+    $(`w-${w}`).addEventListener("input", () => { renderOutputs(); const wait = lastSent + 250 - performance.now(); if (wait <= 0) flushWeights(); else timer ||= setTimeout(flushWeights, wait); });
+    $(`w-${w}`).addEventListener("change", flushWeights);
+  }
   $("elapsed").addEventListener("input", (e) => { manualS = e.target.value * 60; set("ui", { follow: false }); clearSpe(true); refresh(true); });
   $("eva-follow").addEventListener("click", () => { set("ui", { follow: true }); refresh(true); });
   $("reset-goal").addEventListener("click", () => setGoal(cheyava));

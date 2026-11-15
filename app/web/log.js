@@ -1,5 +1,5 @@
 import { state, set, on } from "./store.js";
-import { t, num, apply, has } from "./i18n.js";
+import { t, tEn, num, apply, has, shown as inMyLang } from "./i18n.js";
 import { $, esc, h, tag, toast } from "./ui.js";
 import { submit, hubNow } from "./sync.js";
 import { mars } from "./marsclock.js";
@@ -73,7 +73,7 @@ export const EQUIP_ID_RE = /^[\w-]{1,32}$/;
 
 const MARKER = { fault: "fault", hazard: "hazard", sample: "sample", equipment: "equipment", env_change: "note", route_deviation: "note", note: "note" };
 export const markerOf = (e, onClick, secLabel = (s) => s) => ({
-  id: e.id, cell: e.cell, kind: MARKER[e.section] ?? "note", label: e.title, sub: `${e.author?.crew ?? ""} · ${secLabel(e.section)}`,
+  id: e.id, cell: e.cell, kind: MARKER[e.section] ?? "note", label: inMyLang(e.title), sub: `${e.author?.crew ?? ""} · ${secLabel(e.section)}`,
   provisional: !!e.provisional, stale: e.status === "resolved",
   ...(SEV_SECTIONS.has(e.section) && e.severity >= 2 && e.status !== "resolved" ? { radius_m: e.radius_m } : {}), onClick,
 });
@@ -152,7 +152,7 @@ function rowHtml({ e, superseded }) {
   return `<li class="log-row" data-id="${esc(e.id)}" data-sev="${sev}" data-status="${st}"${superseded ? " data-superseded" : ""}${e.provisional ? " data-provisional" : ""}>
     <span class="log-ico" title="${esc(t(`log.sec.${e.section}`))}">${SEC_GLYPH[e.section] ?? ""}<span class="sr">${esc(t(`log.sec.${e.section}`))}</span></span>
     <div class="log-main">
-      <p class="log-title"><span class="log-sev" title="${esc(t(`log.sev.${sev}`))}">${SEV_GLYPH[sev]}<span class="sr">${esc(t(`log.sev.${sev}`))}</span></span><strong>${esc(e.title)}</strong></p>
+      <p class="log-title"><span class="log-sev" title="${esc(t(`log.sev.${sev}`))}">${SEV_GLYPH[sev]}<span class="sr">${esc(t(`log.sev.${sev}`))}</span></span><strong>${esc(inMyLang(e.title))}</strong></p>
       <p class="log-meta">${esc(e.author?.crew ?? "?")} · ${esc(when)}</p>
       <p class="log-meta"><span class="log-status">${esc(t(`log.status.${st}`))}</span>${e.provisional ? ` · <span class="log-status">${esc(t("log.pending"))}</span>` : ""}${superseded ? ` · ${esc(t("log.superseded"))}` : ""} ${tag(e.tag === "SIMULATED" ? "SIMULATED" : "REPORTED")}</p>
       ${sum ? `<p class="log-sum">${sum}</p>` : ""}${e.note ? `<p class="log-note">${esc(e.note)}</p>` : ""}${photo}
@@ -170,12 +170,12 @@ function locksHtml() {
   const doc = state.doc, locks = Object.values(doc.locks ?? {}).filter((l) => l.kind !== "equipment");
   const rows = locks.map((l) => `<li class="log-row lock-row" data-lock="${esc(l.target)}"${l.provisional ? " data-provisional" : ""}>
     <div class="log-main"><p class="log-title"><strong>${esc(t(`log.lock.kind.${l.kind}`))}</strong> · ${esc(l.holder?.crew ?? "?")}</p>
-    <p class="log-meta">${esc(l.reason ?? "")}${l.provisional ? ` · ${esc(t("log.pending"))}` : ""}${l.sticky ? ` · ${esc(t("log.lock.sticky"))}` : ""}</p>
+    <p class="log-meta">${esc(inMyLang(l.reason ?? ""))}${l.provisional ? ` · ${esc(t("log.pending"))}` : ""}${l.sticky ? ` · ${esc(t("log.lock.sticky"))}` : ""}</p>
     ${holdsLock(l) && !l.provisional ? `<p class="log-acts"><button type="button" class="log-btn" data-act="release" data-target="${esc(l.target)}">${esc(t("log.lock.release"))}</button></p>` : ""}</div></li>`).join("");
   const assets = Object.values(doc.assets ?? {}).filter((a) => a.kind === "equipment" || a.kind === "vehicle");
   const eq = assets.map((a) => {
     const l = lockOf(`equip:${a.id}`), mine = l && l.holder?.deviceId === me().deviceId;
-    return `<li class="log-row lock-row"><div class="log-main"><p class="log-title"><strong>${esc(a.name ?? a.id)}</strong></p>
+    return `<li class="log-row lock-row"><div class="log-main"><p class="log-title"><strong>${esc(inMyLang(a.name ?? a.id))}</strong></p>
       <p class="log-meta">${l ? esc(t("log.eq.inuse", { crew: l.holder?.crew ?? "?" })) : esc(t("log.eq.free"))}${l?.provisional ? ` · ${esc(t("log.pending"))}` : ""}</p>
       <p class="log-acts">${l ? (holdsLock(l) ? (l.provisional ? "" : `<button type="button" class="log-btn" data-act="release" data-target="${esc(l.target)}">${esc(t("log.lock.release"))}</button>`) : `<button type="button" class="log-btn" disabled>${esc(t("log.eq.take"))}</button>`)
         : `<button type="button" class="log-btn" data-act="take" data-id="${esc(a.id)}"${EQUIP_ID_RE.test(a.id) ? "" : " disabled"}>${esc(t("log.eq.take"))}</button>`}</p></div></li>`;
@@ -222,7 +222,7 @@ function drawMap() {
   m.lines?.("log:routes", routes.length ? routes.map((l) => l.cells) : null, { token: "--ink", width: 3, halo: true, dash: "2 6" });
   const plates = [...others, ...routes].filter((l) => l.cells?.length).map((l) => ({
     id: l.target, cell: l.cells[l.cells.length >> 1], kind: "note", provisional: !!l.provisional,
-    label: l.kind === "zone" ? t("log.plate.locked", { crew: l.holder?.crew ?? "?", reason: l.reason ?? "" }) : t("log.plate.reserved", { crew: l.holder?.crew ?? "?" }),
+    label: l.kind === "zone" ? t("log.plate.locked", { crew: l.holder?.crew ?? "?", reason: inMyLang(l.reason ?? "") }) : t("log.plate.reserved", { crew: l.holder?.crew ?? "?" }),
   }));
   m.markers?.("log:lockplates", plates.length ? plates : null);
 }
@@ -355,7 +355,7 @@ function openReport(init = {}) {
     const sec = val("section");
     const input = {
       section: sec, severity: Number(val("severity")), cell: loc, radius_m: Number(val("radius")), profiles: new FormData(form).getAll("profiles"),
-      title: val("title").trim() || t(`log.sec.${sec}`), note: val("note"), photo, supersedes: init.supersedes,
+      title: val("title").trim() || tEn(`log.sec.${sec}`), note: val("note"), photo, supersedes: init.supersedes,
       data: { kind: sec === "fault" ? val("fault_kind") : val("haz_kind"), offset_m: val("fault_off") === "" ? undefined : Number(val("fault_off")), what: val("env_what"),
         reason: val("dev_reason"), path: sec === "route_deviation" ? [state.plan?.at?.cell, loc].filter((c, i, a) => Number.isInteger(c) && a.indexOf(c) === i) : [],
         sample_id: val("smp_id"), rock: val("smp_rock"), item: val("eq_item"), state: val("eq_state") },
@@ -384,7 +384,7 @@ function openZone() {
   form.addEventListener("click", (ev) => { if (ev.target.closest('[data-form="cancel"]')) dlg.close(); });
   form.addEventListener("submit", async (ev) => {
     ev.preventDefault();
-    const fd = new FormData(form), reason = String(fd.get("reason") || "").trim().slice(0, 80) || t("log.lock.reason.default"), profiles = fd.getAll("profiles"), sticky = !!fd.get("sticky");
+    const fd = new FormData(form), reason = String(fd.get("reason") || "").trim().slice(0, 80) || tEn("log.lock.reason.default"), profiles = fd.getAll("profiles"), sticky = !!fd.get("sticky");
     picking = true; dlg.close();
     const poly = await ctx.map?.pickPolygon?.("log.pick.zone");
     picking = false;
@@ -413,7 +413,7 @@ function onAction(ev) {
   else if (a === "lock-route") {
     const route = state.plan?.route;
     if (!route?.length) return toast(t("log.lock.noroute"), "warning");
-    submit({ t: "lock.request", target: `route:${me().deviceId}`, kind: "route", cells: [...route], profiles: PROFILE_IDS, reason: t("log.lock.kind.route"), sticky: false, ttlMs: 30000 });
+    submit({ t: "lock.request", target: `route:${me().deviceId}`, kind: "route", cells: [...route], profiles: PROFILE_IDS, reason: tEn("log.lock.kind.route"), sticky: false, ttlMs: 30000 });
   } else if (a === "release") { const l = lockOf(b.dataset.target); if (l) submit({ t: "lock.release", target: l.target, fence: l.fence }); }
   else if (a === "take") submit({ t: "lock.request", target: `equip:${id}`, kind: "equipment", profiles: PROFILE_IDS, reason: "equipment", sticky: false, ttlMs: 30000 });
   else if (a === "rr-dismiss") { dismissedRR = shownRR; renderReroute(); }
