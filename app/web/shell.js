@@ -314,6 +314,10 @@ function renderAlert() {
 }
 
 function initAlertBar() {
+  const bar = $("alert-bar");
+  new ResizeObserver(() => {
+    document.documentElement.style.setProperty("--alert-h", `${bar.offsetHeight}px`);
+  }).observe(bar);
   $("alert-show").addEventListener("click", () => {
     if (!shownAlert) return;
     if (state.ui.guide) exitGuide();

@@ -730,12 +730,6 @@ function buildStrip() {
   const strip = $("legend-strip");
   strip.replaceChildren();
 
-  const openButton = h("button", "lbtn");
-  openButton.type = "button";
-  openButton.id = "layers-open";
-  openButton.setAttribute("aria-controls", "layers-drawer");
-  openButton.addEventListener("click", () => set("ui", { drawer: !state.ui.drawer }));
-
   const legend = h("div", "layer-legend");
   legend.id = "layer-legend";
   legend.setAttribute("aria-live", "polite");
@@ -744,7 +738,7 @@ function buildStrip() {
   profileStrip.id = "profile-strip";
 
   const top = h("div", "strip-a");
-  top.append(openButton, profileStrip, legend);
+  top.append(profileStrip, legend);
 
   const safety = h("ul", "legend");
   safety.id = "safety-legend";
@@ -757,9 +751,6 @@ function buildStrip() {
 }
 
 function renderStrip() {
-  const openButton = $("layers-open");
-  openButton.innerHTML = `<span>${esc(t("layers.open"))}</span>`;
-  openButton.setAttribute("aria-expanded", String(!!state.ui.drawer));
   $("profile-strip").replaceChildren(profileControl());
   $("safety-legend").setAttribute("aria-label", t("legend.title"));
   $("legend-sum").textContent = t("legend.title");
@@ -768,7 +759,8 @@ function renderStrip() {
 }
 
 function captionHtml(item) {
-  let html = `<p>${esc(t(`layers.cap.${item.id}`))}</p>`
+  let html = `<p class="ltags">${tagsHtml(item.tag)}</p>`
+    + `<p>${esc(t(`layers.cap.${item.id}`))}</p>`
     + `<p class="lmeta"><b>${esc(t("layers.source"))}:</b> ${esc(t(`layers.src.${item.id}`))}</p>`;
   const isStorm = item.id === "dust_storm";
   if (item.unit || isStorm) {
@@ -830,10 +822,9 @@ function row(item) {
   if (isRaster || isVector) {
     head.append(selectorLabel(item, glyphHtml, nameHtml));
   } else {
-    head.append(h("span", "lsel static", `${glyphHtml}<span class="lname">${nameHtml}</span>`));
+    const glyph = glyphHtml || '<span class="lsw"></span>';
+    head.append(h("span", "lsel static", `${glyph}<span class="lname">${nameHtml}</span>`));
   }
-  head.append(h("span", "ltags", tagsHtml(item.tag)));
-
   const caption = h("div", "lcap");
   caption.id = `cap-${item.id}`;
   caption.hidden = !openInfo.has(item.id);
@@ -850,9 +841,6 @@ function row(item) {
     infoButton.setAttribute("aria-expanded", String(openInfo.has(item.id)));
     caption.hidden = !openInfo.has(item.id);
   });
-  head.append(infoButton);
-  li.append(head);
-
   if (item.readout || item.kind === "readout") {
     const valueButton = h("button", "lval");
     valueButton.type = "button";
@@ -862,9 +850,10 @@ function row(item) {
       set("ui", { tab: "env" });
       if (matchMedia("(max-width: 899px)").matches) set("ui", { drawer: false });
     });
-    li.append(valueButton);
+    head.append(valueButton);
   }
-  li.append(caption);
+  head.append(infoButton);
+  li.append(head, caption);
   return li;
 }
 
@@ -886,7 +875,7 @@ function buildDrawer() {
 
   drawer.setAttribute("aria-labelledby", "layers-t");
   drawer.setAttribute("role", "region");
-  drawer.append(head);
+  drawer.append(head, h("p", "lhint", esc(t("layers.hint"))));
 
   for (const cat of CATS) {
     const details = h("details", "lcat");
@@ -910,7 +899,6 @@ function buildDrawer() {
 function syncControls() {
   const ui = state.ui;
   $("layers-drawer").hidden = !ui.drawer;
-  $("layers-open")?.setAttribute("aria-expanded", String(!!ui.drawer));
   for (const item of CATALOGUE) {
     const input = $(`lyr-${item.id}`);
     if (!input) continue;
@@ -1084,9 +1072,13 @@ export async function init(ctx) {
     if (ui.raster !== seen.raster || ui.show !== seen.show) {
       saveSettings({ raster: ui.raster, show: ui.show });
     }
+    const closed = !ui.drawer && seen.drawer;
     seen = { raster: ui.raster, show: ui.show, drawer: ui.drawer, profile: ui.profile };
     syncControls();
-    if (opened) $("layers-t")?.focus();
+    if (opened) $("layers-t")?.focus({ preventScroll: true });
+    if ((opened || closed) && matchMedia("(max-width: 1279px)").matches && !ui.guide) {
+      $("map-tools").closest(".map-stage").scrollIntoView({ block: opened ? "start" : "nearest" });
+    }
   });
 
   on("env", () => {
@@ -1121,7 +1113,7 @@ export async function init(ctx) {
   $("layers-drawer").addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       set("ui", { drawer: false });
-      $("layers-open")?.focus();
+      $("[data-tool=layers]")?.focus();
     }
   });
 }

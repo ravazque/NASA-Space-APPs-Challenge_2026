@@ -547,7 +547,6 @@ function declutter() {
 }
 
 const FIXED_UI_SELECTOR = [
-  ".map-tools .tool",
   ".map-scale",
   ".map-readout",
   ".leaflet-control-attribution",
@@ -829,9 +828,10 @@ function drawGraticuleLabels() {
 
 function drawNote() {
   const view = map.getBounds();
-  const envelopeVisible = state.plan.envInside
-    && envelopePolys.some((poly) => poly.some(([lat, lng]) => view.contains([lat, lng])));
-  noteEl.hidden = !state.plan.envInside || envelopeVisible;
+  const envelopeVisible = envelopePolys.some(
+    (poly) => poly.some(([lat, lng]) => view.contains([lat, lng])),
+  );
+  noteEl.hidden = !state.plan.envInside || !envelopePolys.length || envelopeVisible;
   noteEl.textContent = t("map.env_beyond");
 }
 
@@ -1186,15 +1186,19 @@ function centerCell() {
   return latLngToCell(center.lat, center.lng);
 }
 
-function addTool(box, id, inner, key, onClick) {
+function addTool(box, id, inner, key, onClick, labelKey) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "tool";
   button.dataset.tool = id;
-  button.dataset.i18nAria = key;
   button.dataset.i18nTitle = key;
-  button.setAttribute("aria-label", t(key));
   button.title = t(key);
+  if (labelKey) {
+    inner += `<span class="tl" data-i18n="${labelKey}">${esc(t(labelKey))}</span>`;
+  } else {
+    button.dataset.i18nAria = key;
+    button.setAttribute("aria-label", t(key));
+  }
   button.innerHTML = inner;
   button.addEventListener("click", onClick);
   box.append(button);
@@ -1205,33 +1209,27 @@ function buildTools() {
   const box = $("map-tools");
   const icon = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true">${TOOL_ICONS[name]}</svg>`;
 
-  addTool(box, "zoom-in", "+", "map.zoom_in", () => map.zoomIn());
-  addTool(box, "zoom-out", "−", "map.zoom_out", () => map.zoomOut());
-  addTool(box, "fit", icon("fit"), "map.fit", fit);
-  addTool(box, "locate", icon("locate"), "map.locate", () => {
-    api.flyTo(state.ui.me?.manualCell ?? state.plan.at?.cell ?? state.data.habitat);
-  });
   const layersButton = addTool(box, "layers", icon("layers"), "map.layers", () => {
     set("ui", { drawer: !state.ui.drawer });
-  });
-  addTool(box, "report", icon("report"), "map.report", () => emit("map:report"));
-  addTool(box, "guide", icon("guide"), "map.guide", () => set("ui", { guide: true }));
+  }, "map.tool.layers");
+  layersButton.setAttribute("aria-controls", "layers-drawer");
+  addTool(box, "fit", icon("fit"), "map.fit", fit, "map.tool.fit");
+  addTool(box, "locate", icon("locate"), "map.locate", () => {
+    api.flyTo(state.ui.me?.manualCell ?? state.plan.at?.cell ?? state.data.habitat);
+  }, "map.tool.locate");
+  addTool(box, "report", icon("report"), "map.report", () => emit("map:report"), "map.tool.report");
+  addTool(box, "guide", icon("guide"), "map.guide", () => set("ui", { guide: true }), "map.tool.guide");
+  addTool(box, "zoom-out", "−", "map.zoom_out", () => map.zoomOut());
+  addTool(box, "zoom-in", "+", "map.zoom_in", () => map.zoomIn());
   return layersButton;
 }
 
-const insideZoom = () => map.getBoundsZoom(tileBounds, true);
-
 function limitZoom() {
-  map.setMinZoom(Math.max(9, insideZoom()));
+  map.setMinZoom(Math.max(9, map.getBoundsZoom(L.latLngBounds(tileBounds).pad(0.05))));
 }
 
 function fit() {
-  const zoom = insideZoom();
-  const fitsWholeGrid = map.getBoundsZoom(gridBounds) >= zoom;
-  const center = fitsWholeGrid
-    ? L.latLngBounds(gridBounds).getCenter()
-    : cellToLatLng(data.habitat);
-  map.setView(center, zoom, { animate: false });
+  map.fitBounds(gridBounds, { padding: [6, 6], animate: false });
 }
 
 function snapToTileGrid(bound, round) {
@@ -1516,7 +1514,7 @@ export async function init(config) {
 
   on("plan", drawPlan);
   on("ui", (ui) => {
-    layersButton.setAttribute("aria-pressed", String(!!ui.drawer));
+    layersButton.setAttribute("aria-expanded", String(!!ui.drawer));
     if (ui.selected !== lastUi.selected) markSelected(ui.selected);
     if (ui.raster !== lastUi.raster || ui.show?.traverse !== lastUi.traverse) legacy();
     lastUi = { selected: ui.selected, raster: ui.raster, traverse: ui.show?.traverse };

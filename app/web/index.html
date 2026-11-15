@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f2f1ec">
   <title>ARIADNE · EVA planner</title>
   <meta name="description" content="EVA planner on real NASA data in Jezero crater: route, safe return and solar-storm diversion.">
   <link rel="icon" href="data:,">
@@ -67,18 +68,19 @@
     <section class="map-col" aria-labelledby="map-t">
       <h2 id="map-t" class="sr" data-i18n="map.region">EVA map, Jezero crater</h2>
       <div class="map-stage">
-        <div class="map-scroll"><div id="map" class="map-frame" tabindex="0" role="application" data-i18n-aria="map.canvas" aria-label="Jezero map with the route from Three Forks. Arrows move the destination 20 m; Shift and arrows, 200 m."></div></div>
-        <p id="status" class="status" data-i18n="map.loading">Loading Jezero data…</p>
-        <section id="map-error" class="z535 map-error" data-tone="danger" role="alert" aria-labelledby="err-t" hidden>
-          <h2 class="band" id="err-t"><svg class="glyph" aria-hidden="true"><use href="#g-prohibit"/></svg><span data-i18n="err.title">Data error</span></h2>
-          <div class="body"><p id="err-body" class="detail"></p></div>
-        </section>
-        <div id="map-tools" class="map-tools"></div>
-        <details id="info-card" class="info-card"><summary id="info-sum">Now</summary><dl id="info-body"></dl></details>
-        <aside id="layers-drawer" class="layers-drawer" hidden></aside>
+        <div class="map-view">
+          <div class="map-scroll"><div id="map" class="map-frame" tabindex="0" role="application" data-i18n-aria="map.canvas" aria-label="Jezero map with the route from Three Forks. Arrows move the destination 20 m; Shift and arrows, 200 m."></div></div>
+          <p id="status" class="status" data-i18n="map.loading">Loading Jezero data…</p>
+          <section id="map-error" class="z535 map-error" data-tone="danger" role="alert" aria-labelledby="err-t" hidden>
+            <h2 class="band" id="err-t"><svg class="glyph" aria-hidden="true"><use href="#g-prohibit"/></svg><span data-i18n="err.title">Data error</span></h2>
+            <div class="body"><p id="err-body" class="detail"></p></div>
+          </section>
+          <details id="info-card" class="info-card"><summary id="info-sum">Now</summary><dl id="info-body"></dl></details>
+        </div>
+        <div id="map-tools" class="map-tools" role="group" data-i18n-aria="map.tools" aria-label="Map tools"></div>
       </div>
+      <aside id="layers-drawer" class="layers-drawer" hidden></aside>
 
-      <p id="now-line" class="now-line" aria-live="off"></p>
       <div class="under-row">
       <div id="legend-strip" class="map-strip">
         <div class="strip-a">
@@ -113,6 +115,7 @@
       </div>
       <div id="map-bar" class="map-bar"></div>
       </div>
+      <p id="now-line" class="now-line" aria-live="off"></p>
     </section>
     <section id="destino" class="z535 card-dest" tabindex="-1" data-tone="neutral" aria-labelledby="dest-t" hidden>
       <h2 class="band" id="dest-t"><span data-i18n="dest.title">Destination · Cheyava Falls</span></h2>

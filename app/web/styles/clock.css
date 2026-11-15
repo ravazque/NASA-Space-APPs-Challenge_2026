@@ -13,8 +13,7 @@
 .clk-rate { padding-inline: var(--s2); font-weight: 600; flex: none; }
 .clk-earth, .clk-dust { display: none; }
 @media (min-width: 900px) { .clk-ls, .clk-sun { display: none; } .clock-bar { flex-wrap: nowrap; } .clk-chip { width: auto; max-width: 15rem; } }
-@media (min-width: 900px) and (max-width: 1199px) { .top { flex-wrap: wrap; row-gap: var(--s2); padding-block: var(--s2); } .brand { flex: 1; } .clock-bar { order: 3; flex-basis: 100%; } }
-@media (min-width: 600px) and (max-width: 899px), (max-width: 380px) { .clock-bar { flex: 1 1 100%; } }
+@media (min-width: 900px) and (max-width: 1199px) { .top { flex-wrap: wrap; row-gap: var(--s2); padding-block: calc(var(--s2) + var(--sat)) var(--s2); } .brand { flex: 1; } .clock-bar { order: 3; flex-basis: 100%; } }
 @media (pointer: coarse), (max-width: 899px) { .clk-chip, .clk-btn, .clk-rate { min-height: var(--tap); } .clk-btn { min-width: var(--tap); } .clk-info { min-width: var(--tap); } }
 @media (max-width: 899px) {
   .clk-chip, .clk-ls, .clk-sun, .clk-earth, .clk-dust, .clk-rate { display: none; }

@@ -3,5 +3,5 @@
   "appName": "ARIADNE",
   "webDir": "app/web",
   "server": { "androidScheme": "http", "cleartext": true },
-  "android": { "allowMixedContent": true }
+  "android": { "allowMixedContent": true, "adjustMarginsForEdgeToEdge": "auto" }
 }

@@ -74,7 +74,8 @@ const N = {
 };
 
 const en = {
-  "layers.title": "Layers", "layers.open": "Layers", "layers.close": "Close layers", "layers.clear": "Clear shading",
+  "layers.title": "Map layers", "layers.close": "Close layers", "layers.clear": "Clear shading",
+  "layers.hint": "Tick what you want to see on the map. Colour shadings (round buttons) show one at a time; ⓘ explains each layer and its source.",
   "layers.cat.nav": "Navigation & safety", "layers.cat.topo": "Topography", "layers.cat.geo": "Geology",
   "layers.cat.met": "Meteorology", "layers.cat.atm": "Atmosphere", "layers.cat.rad": "Radiation",
   "layers.info": "About {name}", "layers.source": "Source", "layers.unit": "Unit", "layers.always": "Always on",
@@ -109,7 +110,8 @@ const en = {
 
 };
 const es = {
-  "layers.title": "Capas", "layers.open": "Capas", "layers.close": "Cerrar capas", "layers.clear": "Quitar sombreado",
+  "layers.title": "Capas del mapa", "layers.close": "Cerrar capas", "layers.clear": "Quitar sombreado",
+  "layers.hint": "Marca lo que quieres ver en el mapa. Los sombreados de color (botones redondos) van de uno en uno; ⓘ explica cada capa y su fuente.",
   "layers.cat.nav": "Navegación y seguridad", "layers.cat.topo": "Topografía", "layers.cat.geo": "Geología",
   "layers.cat.met": "Meteorología", "layers.cat.atm": "Atmósfera", "layers.cat.rad": "Radiación",
   "layers.info": "Sobre {name}", "layers.source": "Fuente", "layers.unit": "Unidad", "layers.always": "Siempre activa",

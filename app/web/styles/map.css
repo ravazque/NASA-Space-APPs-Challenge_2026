@@ -3,7 +3,7 @@
   min-height: 24rem; height: clamp(24rem, calc(100vh - var(--top-h) - 2 * var(--s4) - var(--strip-h)), 60rem); height: clamp(24rem, calc(100svh - var(--top-h) - 2 * var(--s4) - var(--strip-h)), 60rem); }
 .map-frame { isolation: isolate; }
 .map-frame::after { content: ""; position: absolute; inset: 0; border: var(--hair) solid var(--ink); pointer-events: none; z-index: 1200; }
-@media (max-width: 899px) { .map-frame { height: 62vh; height: 62svh; min-height: 20rem; } }
+@media (max-width: 899px) { .map-frame { height: min(62vh, 110vw); height: min(58svh, 110vw); min-height: 18rem; } }
 #map:focus-visible { outline-offset: -3px; }
 .status { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 600; background: var(--ground-2); }
 .map-error { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(32rem, calc(100% - 2 * var(--s4))); }
@@ -55,16 +55,27 @@
 .map-readout { padding: 2px 8px; font: 600 var(--t-xs)/1.4 var(--font); font-variant-numeric: tabular-nums; min-width: 17.5rem; }
 @media (max-width: 599px) { .sc-cap { display: none; } .map-readout { min-width: 0; } }
 
-.map-tools { flex-wrap: wrap-reverse; max-height: calc(100% - 2 * var(--s2)); justify-content: flex-start; align-content: flex-end; }
-.tool { appearance: none; width: var(--tap); height: var(--tap); display: grid; place-items: center; padding: 0; background: var(--ground); color: var(--ink); border: var(--hair) solid var(--ink);
-  font: 600 1.5rem/1 var(--font); cursor: pointer; touch-action: manipulation; }
-.tool svg { width: 1.5rem; height: 1.5rem; }
-.tool:hover { background: var(--ground-2); } .tool:active, .tool[aria-pressed="true"] { background: var(--ink); color: var(--ground); }
-.tool[data-tool="report"] { width: 3.5rem; height: 3.5rem; align-self: flex-end; background: var(--ink); color: var(--ground); }
-.tool[data-tool="report"]:hover { background: var(--ink-2); }
-.tool:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.map-stage { container-type: inline-size; }
+.map-tools { display: flex; border: var(--hair) solid var(--ink); border-top: 0; background: var(--surface); }
+.map-tools:empty { display: none; }
+.tool { appearance: none; flex: 1 1 0; min-width: 0; min-height: 3.25rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  padding: var(--s1) 2px; background: transparent; color: var(--ink); border: 0; font: 600 var(--t-xs)/1.1 var(--font); text-align: center; cursor: pointer; touch-action: manipulation; }
+.tool + .tool { border-left: var(--hair) solid var(--ink); }
+.tool svg { width: 1.375rem; height: 1.375rem; flex: none; }
+.tool[data-tool^="zoom"] { flex: 0 0 var(--tap); font-size: 1.625rem; font-weight: 500; line-height: 1; }
+.tool:hover { background: var(--ground-2); }
+.tool:active, .tool[aria-expanded="true"] { background: var(--ink); color: var(--ground); }
+.tool:focus-visible { outline: 3px solid var(--ink); outline-offset: -3px; }
+.tool[aria-expanded="true"]:focus-visible { outline-color: var(--yellow); }
+@container (max-width: 22rem) { .tool { font-size: .75rem; } .tool[data-tool^="zoom"] { flex-basis: 2.25rem; } }
+@container (min-width: 40rem) {
+  .tool { flex: 0 0 auto; flex-direction: row; gap: var(--s2); min-height: 2.75rem; padding: 0 var(--s3); font-size: var(--t-sm); }
+  .tool svg { width: 1.25rem; height: 1.25rem; }
+  .tool[data-tool="zoom-out"] { margin-left: auto; border-left: var(--hair) solid var(--ink); }
+  .tool[data-tool^="zoom"] { flex-basis: var(--tap); font-size: 1.5rem; }
+}
 
-.map-pick { position: absolute; z-index: 1100; left: var(--s2); right: calc(var(--tap) + 2 * var(--s2)); top: var(--s2); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); padding: var(--s2) var(--s3);
+.map-pick { position: absolute; z-index: 1100; left: var(--s2); right: var(--s2); top: var(--s2); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); padding: var(--s2) var(--s3);
   background: var(--yellow); color: var(--ink); border: var(--hair) solid var(--ink); font: 600 var(--t-md)/1.3 var(--font); cursor: default; }
 .map-pick[hidden] { display: none; }
 .map-pick .pk { display: flex; gap: var(--s2); margin-left: auto; }

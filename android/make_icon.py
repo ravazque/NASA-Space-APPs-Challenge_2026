@@ -1,62 +1,71 @@
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+import numpy as np
+from PIL import Image, ImageDraw
 
-RES = Path(__file__).parent / "app/src/main/res"
-BACKGROUND = (242, 241, 236, 255)
-INK = (26, 26, 26, 255)
-YELLOW = (242, 177, 0, 255)
-FONT_PATH = "/System/Library/Fonts/Supplemental/Arial Black.ttf"
-TEXT = "ARIADNE"
-MASTER_SIZE = 1080
+ROOT = Path(__file__).resolve().parent.parent
+SOURCE = ROOT / "docs/brand/ariadne-logo.jpeg"
+RES = ROOT / "android/app/src/main/res"
 DENSITIES = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
+CORNER = 0.237
+INSET = 0.08
+ADAPTIVE_ART = 64 / 108
+VIEWPORT = 72 / 108
+SUPERSAMPLE = 4
 BACKGROUND_XML = """<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#F2F1EC</color>
+    <color name="ic_launcher_background">#000000</color>
 </resources>
 """
 
 
-def fit_font(max_width):
-    size = 100
-    while ImageFont.truetype(FONT_PATH, size + 2).getlength(TEXT) <= max_width:
-        size += 2
-    return ImageFont.truetype(FONT_PATH, size)
+def art_mask(rgb):
+    high, low = rgb.max(axis=2), rgb.min(axis=2)
+    return (high < 170) | (high - low > 60)
 
 
-def draw_mark(background):
-    image = Image.new("RGBA", (MASTER_SIZE, MASTER_SIZE), background)
-    draw = ImageDraw.Draw(image)
-    font = fit_font(int(MASTER_SIZE * 0.58))
-    left, top, right, bottom = draw.textbbox((0, 0), TEXT, font=font)
-    text_width = right - left
-    x = (MASTER_SIZE - text_width) // 2 - left
-    y = MASTER_SIZE // 2 - (bottom - top) // 2 - top - 40
-    draw.text((x, y), TEXT, font=font, fill=INK)
-    bar_top = y + bottom + 40
-    bar_left = (MASTER_SIZE - text_width) // 2
-    bar_right = (MASTER_SIZE + text_width) // 2
-    draw.rectangle([bar_left, bar_top, bar_right, bar_top + 60], fill=YELLOW)
-    return image
+def load_tile():
+    rgb = np.asarray(Image.open(SOURCE).convert("RGB")).astype(int)
+    mask = art_mask(rgb)
+    ys, xs = np.nonzero(mask)
+    x0, y0 = xs.min(), ys.min()
+    side = min(xs.max() - x0, ys.max() - y0) + 1
+    inset = round(side * INSET)
+    inner = mask[y0 + inset:y0 + side - inset, x0 + inset:x0 + side - inset]
+    assert inner[[0, 0, -1, -1], [0, -1, 0, -1]].all(), "inset crop still reaches a rounded corner"
+    return rgb[y0:y0 + side, x0:x0 + side].astype(np.uint8), inset
 
 
-def round_icon(square, px):
-    mask = Image.new("L", (px * 4, px * 4), 0)
-    ImageDraw.Draw(mask).ellipse([0, 0, px * 4 - 1, px * 4 - 1], fill=255)
-    rounded = square.copy()
-    rounded.putalpha(mask.resize((px, px), Image.LANCZOS))
-    return rounded
+def masked(image, px, radius_share):
+    big = px * SUPERSAMPLE
+    mask = Image.new("L", (big, big), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, big - 1, big - 1], radius=big * radius_share, fill=255)
+    icon = image.resize((px, px), Image.LANCZOS).convert("RGBA")
+    icon.putalpha(mask.resize((px, px), Image.LANCZOS))
+    return icon
 
 
-foreground = draw_mark((0, 0, 0, 0))
-full = draw_mark(BACKGROUND)
-for density, px in DENSITIES.items():
-    folder = RES / f"mipmap-{density}"
-    square = full.resize((px, px), Image.LANCZOS)
-    square.save(folder / "ic_launcher.png")
-    round_icon(square, px).save(folder / "ic_launcher_round.png")
-    foreground_px = px * 9 // 4
-    foreground.resize((foreground_px, foreground_px), Image.LANCZOS).save(
-        folder / "ic_launcher_foreground.png"
-    )
-(RES / "values/ic_launcher_background.xml").write_text(BACKGROUND_XML)
+def full_bleed(inner):
+    pad = round(inner.shape[0] * (1 / ADAPTIVE_ART - 1) / 2)
+    return Image.fromarray(np.pad(inner, ((pad, pad), (pad, pad), (0, 0)), mode="edge"))
+
+
+def main():
+    tile, inset = load_tile()
+    inner = tile[inset:-inset, inset:-inset]
+    legacy, foreground = Image.fromarray(tile), full_bleed(inner)
+    margin = round(foreground.width * (1 - VIEWPORT) / 2)
+    round_source = foreground.crop((margin, margin, foreground.width - margin, foreground.width - margin))
+    for density, px in DENSITIES.items():
+        folder = RES / f"mipmap-{density}"
+        masked(legacy, px, CORNER).save(folder / "ic_launcher.png", optimize=True)
+        masked(round_source, px, 0.5).save(folder / "ic_launcher_round.png", optimize=True)
+        layer_px = px * 9 // 4
+        foreground.resize((layer_px, layer_px), Image.LANCZOS).save(
+            folder / "ic_launcher_foreground.png", optimize=True
+        )
+    (RES / "values/ic_launcher_background.xml").write_text(BACKGROUND_XML)
+
+
+if __name__ == "__main__":
+    main()
