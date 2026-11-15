@@ -1,0 +1,6 @@
+node_modules/
+app/hub/data/
+test-results/
+playwright-report/
+android/app/build/
+android/.gradle/

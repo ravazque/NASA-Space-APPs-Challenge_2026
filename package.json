@@ -1,0 +1,14 @@
+{
+  "name": "ariadne",
+  "private": true,
+  "version": "2.0.0",
+  "description": "ARIADNE v2: Android shell (Capacitor) around app/web",
+  "scripts": {
+    "cap:sync": "cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "7.6.10",
+    "@capacitor/cli": "7.6.10",
+    "@capacitor/core": "7.6.10"
+  }
+}

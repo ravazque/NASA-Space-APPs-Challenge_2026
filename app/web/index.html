@@ -1,13 +1,19 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ARIADNE · Planificador de EVA</title>
-  <meta name="description" content="Planificador de paseos (EVA) sobre datos reales de la NASA en el cráter Jezero: ruta, vuelta segura y desvío por tormenta solar.">
+  <title>ARIADNE · EVA planner</title>
+  <meta name="description" content="EVA planner on real NASA data in Jezero crater: route, safe return and solar-storm diversion.">
   <link rel="icon" href="data:,">
   <link rel="preload" href="fonts/barlow-600.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="styles/map.css">
+  <link rel="stylesheet" href="styles/layers.css">
+  <link rel="stylesheet" href="styles/clock.css">
+  <link rel="stylesheet" href="styles/hub.css">
+  <link rel="stylesheet" href="styles/log.css">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -29,127 +35,147 @@
       <path d="M4 27.5H164" stroke="currentColor" stroke-width="1.5"/>
       <rect x="0" y="24.5" width="6" height="6" fill="currentColor"/>
       <circle cx="166" cy="27.5" r="3.5" fill="currentColor"/>
-    </svg><span class="descriptor" data-i18n="brand.descriptor">Planificador de EVA · Marte</span></h1>
-    <p id="scenario" class="scenario">EVA · sol 1210 · Jezero</p>
-    <div class="lang" role="group" data-i18n-aria="lang.group" aria-label="Idioma">
-      <button type="button" data-lang="es" aria-pressed="true" lang="es" data-i18n-aria="lang.es_name" aria-label="Español">ES</button><button type="button" data-lang="en" aria-pressed="false" lang="en" data-i18n-aria="lang.en_name" aria-label="English">EN</button>
+    </svg><span class="descriptor" data-i18n="brand.descriptor">EVA planner · Mars</span></h1>
+    <div id="clock-bar" class="clock-bar"></div>
+    <div id="sync-chip" class="sync-chip"></div>
+    <div class="lang" role="group" data-i18n-aria="lang.group" aria-label="Language">
+      <button type="button" data-lang="en" aria-pressed="true" lang="en" data-i18n-aria="lang.en_name" aria-label="English"><span class="short">EN</span><span class="long">English</span></button><button type="button" data-lang="es" aria-pressed="false" lang="es" data-i18n-aria="lang.es_name" aria-label="Español"><span class="short">ES</span><span class="long">Español</span></button>
     </div>
   </header>
 
   <main class="console" aria-busy="true">
     <div class="col">
     <section class="map-col" aria-labelledby="map-t">
-      <h2 id="map-t" class="sr" data-i18n="map.region">Mapa de la EVA, cráter Jezero</h2>
-      <div class="map-scroll"><div class="map-frame">
-        <canvas id="map" tabindex="0" role="application" data-i18n-aria="map.canvas" aria-label="Mapa de Jezero con la ruta desde Three Forks. Flechas: mueve el destino 20 m; Mayús y flechas: 200 m."></canvas>
-        <p id="status" class="status" data-i18n="map.loading">Cargando datos de Jezero…</p>
+      <h2 id="map-t" class="sr" data-i18n="map.region">EVA map, Jezero crater</h2>
+      <div class="map-stage">
+        <div class="map-scroll"><div id="map" class="map-frame" tabindex="0" role="application" data-i18n-aria="map.canvas" aria-label="Jezero map with the route from Three Forks. Arrows move the destination 20 m; Shift and arrows, 200 m."></div></div>
+        <p id="status" class="status" data-i18n="map.loading">Loading Jezero data…</p>
         <section id="map-error" class="z535 map-error" data-tone="danger" role="alert" aria-labelledby="err-t" hidden>
-          <h2 class="band" id="err-t"><svg class="glyph" aria-hidden="true"><use href="#g-prohibit"/></svg><span data-i18n="err.title">Error de datos</span></h2>
+          <h2 class="band" id="err-t"><svg class="glyph" aria-hidden="true"><use href="#g-prohibit"/></svg><span data-i18n="err.title">Data error</span></h2>
           <div class="body"><p id="err-body" class="detail"></p></div>
         </section>
-      </div></div>
+        <div id="map-tools" class="map-tools"></div>
+        <aside id="layers-drawer" class="layers-drawer" hidden></aside>
+      </div>
 
-      <div class="map-strip">
+      <div id="legend-strip" class="map-strip">
         <div class="strip-a">
-          <label class="layer-pick"><span data-i18n="layer.label">Capa</span>
+          <label class="layer-pick"><span data-i18n="layer.label">Layer</span>
             <select id="layer">
-              <option value="none" data-unit="" data-i18n="layer.none">Ninguna (solo imagen HiRISE)</option>
-              <option value="slope_deg" data-unit="°" data-i18n="layer.slope_deg">Pendiente (HiRISE DTM)</option>
-              <option value="elevation_m" data-unit="m" data-i18n="layer.elevation_m">Elevación (HiRISE DTM)</option>
-              <option value="thermal_inertia_si" data-unit="SI" data-i18n="layer.thermal_inertia_si">Inercia térmica (THEMIS): roca o arena</option>
-              <option value="science" data-unit="" data-i18n="layer.science">Valor científico (CRISM)</option>
-              <option value="svf" data-unit="" data-i18n="layer.svf">Exposición al cielo (SVF)</option>
-              <option value="viewshed" data-unit="" data-i18n="layer.viewshed">Comunicaciones (hábitat y repetidor)</option>
-              <option value="geo_unit" data-unit="" data-i18n="layer.geo_unit">Geología (USGS SIM 3464)</option>
-              <option value="confidence" data-unit="" data-i18n="layer.confidence">Confianza del dato</option>
+              <option value="none" data-unit="" data-i18n="layer.none">None (HiRISE image only)</option>
+              <option value="slope_deg" data-unit="°" data-i18n="layer.slope_deg">Slope (HiRISE DTM)</option>
+              <option value="elevation_m" data-unit="m" data-i18n="layer.elevation_m">Elevation (HiRISE DTM)</option>
+              <option value="thermal_inertia_si" data-unit="SI" data-i18n="layer.thermal_inertia_si">Thermal inertia (THEMIS): rock or sand</option>
+              <option value="science" data-unit="" data-i18n="layer.science">Science value (CRISM)</option>
+              <option value="svf" data-unit="" data-i18n="layer.svf">Sky exposure (SVF)</option>
+              <option value="viewshed" data-unit="" data-i18n="layer.viewshed">Comms (habitat and relay)</option>
+              <option value="geo_unit" data-unit="" data-i18n="layer.geo_unit">Geology (USGS SIM 3464)</option>
+              <option value="confidence" data-unit="" data-i18n="layer.confidence">Data confidence</option>
             </select>
           </label>
           <div id="layer-legend" class="layer-legend" aria-live="polite"></div>
-          <label class="check"><input type="checkbox" id="show-traverse" checked> <span data-i18n="traverse.toggle">Recorrido real de Perseverance</span></label>
+          <label class="check"><input type="checkbox" id="show-traverse" checked> <span data-i18n="traverse.toggle">Perseverance's real traverse</span></label>
         </div>
-
-        <ul class="legend" aria-label="Leyenda" data-i18n-aria="legend.title">
-          <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><path d="M0 6H24" style="stroke:var(--ground)" stroke-width="7"/><path d="M0 6H24" style="stroke:var(--blue)" stroke-width="4"/></svg><span data-lg="route">Ruta a seguir</span></li>
-          <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><rect width="24" height="12" style="fill:var(--ground);fill-opacity:.4"/><path d="M-2 12L10 0M5 12L17 0M12 12L24 0M19 12L31 0" style="stroke:var(--red)" stroke-width="2"/><rect x=".5" y=".5" width="23" height="11" fill="none" style="stroke:var(--red)"/></svg><span data-lg="forbidden">Prohibido: pendiente &gt; 18°</span></li>
-          <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><path d="M0 6H24" style="stroke:var(--ground)" stroke-width="5.5"/><path d="M0 6H24" style="stroke:var(--green)" stroke-width="2.5"/></svg><span data-lg="envelope">Límite de vuelta segura</span></li>
-          <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><rect width="24" height="12" style="fill:var(--ground);fill-opacity:.62"/></svg><span data-lg="outside">Sin energía para volver</span></li>
-          <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><rect x="8" y="2" width="8" height="8" style="fill:var(--ink);stroke:var(--ground)" stroke-width="1"/></svg><span data-lg="start">Three Forks · inicio</span></li>
-          <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><circle cx="12" cy="6" r="5" style="fill:var(--blue);stroke:var(--ground)" stroke-width="1"/><circle cx="12" cy="6" r="1.5" style="fill:var(--surface)"/></svg><span data-lg="dest">Destino</span></li>
-          <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><circle cx="12" cy="6" r="3.5" style="fill:var(--surface);stroke:var(--ink)" stroke-width="2"/></svg><span data-lg="eva">Astronauta (EVA)</span></li>
-          <li data-only="traverse"><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><path d="M0 6H24" style="stroke:var(--ground)" stroke-width="3.5"/><path d="M0 6H24" style="stroke:var(--ink)" stroke-width="1.5" stroke-dasharray="5 4"/></svg><span data-lg="traverse">Recorrido de Perseverance</span></li>
-          <li data-only="spe" hidden><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><path d="M0 6H24" style="stroke:var(--ink)" stroke-width="6"/><path d="M0 6H24" style="stroke:var(--yellow)" stroke-width="4" stroke-dasharray="8 6"/></svg><span data-lg="spe">Desvío por tormenta solar</span></li>
-          <li data-only="refuge" hidden><svg class="lg sign" viewBox="0 0 48 48" aria-hidden="true"><use href="#s-refuge"/></svg><span data-lg="refuge">Refugio</span></li>
+        <ul class="legend" aria-label="Legend" data-i18n-aria="legend.title">
+          <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><path d="M0 6H24" style="stroke:var(--ground)" stroke-width="7"/><path d="M0 6H24" style="stroke:var(--blue)" stroke-width="4"/></svg><span data-lg="route">Route to follow</span></li>
+          <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><rect width="24" height="12" style="fill:var(--ground);fill-opacity:.4"/><path d="M-2 12L10 0M5 12L17 0M12 12L24 0M19 12L31 0" style="stroke:var(--red)" stroke-width="2"/><rect x=".5" y=".5" width="23" height="11" fill="none" style="stroke:var(--red)"/></svg><span data-lg="forbidden">Forbidden: slope > 18°</span></li>
+          <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><path d="M0 6H24" style="stroke:var(--ground)" stroke-width="5.5"/><path d="M0 6H24" style="stroke:var(--green)" stroke-width="2.5"/></svg><span data-lg="envelope">Safe-return limit</span></li>
+          <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><rect width="24" height="12" style="fill:var(--ground);fill-opacity:.62"/></svg><span data-lg="outside">Not enough energy to return</span></li>
+          <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><rect x="8" y="2" width="8" height="8" style="fill:var(--ink);stroke:var(--ground)" stroke-width="1"/></svg><span data-lg="start">Three Forks · start</span></li>
+          <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><circle cx="12" cy="6" r="5" style="fill:var(--blue);stroke:var(--ground)" stroke-width="1"/><circle cx="12" cy="6" r="1.5" style="fill:var(--surface)"/></svg><span data-lg="dest">Destination</span></li>
+          <li><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><circle cx="12" cy="6" r="3.5" style="fill:var(--surface);stroke:var(--ink)" stroke-width="2"/></svg><span data-lg="eva">Astronaut (EVA)</span></li>
+          <li data-only="traverse"><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><path d="M0 6H24" style="stroke:var(--ground)" stroke-width="3.5"/><path d="M0 6H24" style="stroke:var(--ink)" stroke-width="1.5" stroke-dasharray="5 4"/></svg><span data-lg="traverse">Perseverance traverse</span></li>
+          <li data-only="spe" hidden><svg class="lg" viewBox="0 0 24 12" aria-hidden="true"><path d="M0 6H24" style="stroke:var(--ink)" stroke-width="6"/><path d="M0 6H24" style="stroke:var(--yellow)" stroke-width="4" stroke-dasharray="8 6"/></svg><span data-lg="spe">Solar-storm diversion</span></li>
+          <li data-only="refuge" hidden><svg class="lg sign" viewBox="0 0 48 48" aria-hidden="true"><use href="#s-refuge"/></svg><span data-lg="refuge">Refuge</span></li>
         </ul>
-
-        <div class="strip-c">
-          <p id="hint" class="hint">Clic en el mapa: nuevo destino · Flechas: 20 m · Mayús + flechas: 200 m</p>
-          <a href="#destino" id="why" class="text-btn" data-i18n="map.why">Por qué Cheyava Falls</a>
-          <button type="button" id="reset-goal" class="text-btn" data-i18n="map.reset" hidden>Volver a Cheyava Falls</button>
-        </div>
+      </div>
+      <div class="strip-c">
+        <p id="hint" class="hint">Click the map: new destination · Arrows: 20 m · Shift + arrows: 200 m</p>
+        <a href="#destino" id="why" class="text-btn" data-i18n="map.why">Why Cheyava Falls</a>
+        <button type="button" id="reset-goal" class="text-btn" data-i18n="map.reset" hidden>Back to Cheyava Falls</button>
       </div>
     </section>
     <section id="destino" class="z535 card-dest" tabindex="-1" data-tone="neutral" aria-labelledby="dest-t" hidden>
-      <h2 class="band" id="dest-t"><span data-i18n="dest.title">Destino · Cheyava Falls</span></h2>
+      <h2 class="band" id="dest-t"><span data-i18n="dest.title">Destination · Cheyava Falls</span></h2>
       <div class="body" id="dest-body"></div>
     </section>
     </div>
 
     <div class="col">
-    <aside class="side-col" aria-label="Estado de la EVA y controles" data-i18n-aria="side.region">
+    <aside class="side-col" aria-label="EVA status and controls" data-i18n-aria="side.region">
+      <div id="hazard-slot" class="slot"></div>
+      <div id="reroute-slot" class="slot"></div>
+      <nav id="tabs" class="console-tabs" role="tablist" data-i18n-aria="core.tabs" aria-label="Console panels">
+        <button type="button" role="tab" id="tab-plan" data-tab="plan" aria-controls="pane-plan" aria-selected="true" data-i18n="core.tab.plan">PLAN</button>
+        <button type="button" role="tab" id="tab-env" data-tab="env" aria-controls="pane-env" aria-selected="false" tabindex="-1" data-i18n="core.tab.env">ENV</button>
+        <button type="button" role="tab" id="tab-log" data-tab="log" aria-controls="pane-log" aria-selected="false" tabindex="-1"><span data-i18n="core.tab.log">LOG</span><span id="log-count" class="count"></span></button>
+      </nav>
+
+      <section id="pane-plan" class="pane" role="tabpanel" aria-labelledby="tab-plan">
+        <p id="scenario" class="scenario">EVA · sol 1210 · Jezero</p>
       <section id="safe" class="z535" data-tone="pending" role="status" aria-live="polite" aria-labelledby="safe-t">
         <div class="symbol"><svg aria-hidden="true"><use/></svg></div>
-        <h2 class="band" id="safe-t"><svg class="glyph" aria-hidden="true"><use/></svg><span id="safe-title">Calculando</span></h2>
+        <h2 class="band" id="safe-t"><svg class="glyph" aria-hidden="true"><use/></svg><span id="safe-title">Computing</span></h2>
         <div class="body"><span class="value" id="safe-value">—</span><p class="detail" id="safe-detail"></p></div>
       </section>
 
       <div class="pair">
         <section class="z535" data-tone="mandatory" aria-labelledby="route-t">
-          <h2 class="band" id="route-t"><svg class="glyph" aria-hidden="true"><use href="#g-route"/></svg><span data-i18n="route.title">Ruta</span></h2>
+          <h2 class="band" id="route-t"><svg class="glyph" aria-hidden="true"><use href="#g-route"/></svg><span data-i18n="route.title">Route</span></h2>
           <div class="body"><span class="value" id="route-value">—</span><p class="detail" id="route-detail"></p></div>
         </section>
         <section class="z535" data-tone="neutral" aria-labelledby="energy-t">
-          <h2 class="band" id="energy-t"><svg class="glyph" aria-hidden="true"><use/></svg><span data-i18n="energy.title">Energía</span></h2>
+          <h2 class="band" id="energy-t"><svg class="glyph" aria-hidden="true"><use/></svg><span data-i18n="energy.title">Energy</span></h2>
           <div class="body"><span class="value" id="energy-value">—</span><p class="detail" id="energy-detail"></p></div>
         </section>
       </div>
-
       <div class="eva">
-        <div class="slider"><label for="elapsed" data-i18n="eva.label">Hora de EVA</label><input type="range" id="elapsed" min="0" max="480" step="5" value="155"><output for="elapsed" id="elapsed-out">2 h 35 min</output></div>
-        <p class="hint" data-i18n="eva.hint">Camina hasta el destino y trabaja allí: según pasa el reloj, se encoge la zona desde la que aún puedes volver.</p>
+        <div class="slider"><label for="elapsed" data-i18n="eva.label">EVA clock</label><input type="range" id="elapsed" min="0" max="480" step="5" value="155"><output for="elapsed" id="elapsed-out">2 h 35 min</output></div>
+        <p id="eva-start" class="hint eva-start" hidden></p>
+        <button type="button" id="eva-follow" class="text-btn" data-i18n="eva.follow" hidden>Follow clock</button>
+        <p class="hint" data-i18n="eva.hint">Walk to the destination and work there: as the clock runs, the area you can still return from shrinks.</p>
       </div>
 
-      <fieldset class="prio"><legend data-i18n="prio.legend">Prioridades de la ruta</legend>
-        <div class="slider"><label for="w-energy" data-i18n="prio.energy">Ahorrar energía</label><input type="range" id="w-energy" min="0" max="5" step="0.1" value="1"><output for="w-energy" id="w-energy-out">1,0</output></div>
-        <div class="slider"><label for="w-risk" data-i18n="prio.risk">Evitar arena suelta</label><input type="range" id="w-risk" min="0" max="5" step="0.1" value="1"><output for="w-risk" id="w-risk-out">1,0</output></div>
-        <div class="slider"><label for="w-comms" data-i18n="prio.comms">Mantener enlace</label><input type="range" id="w-comms" min="0" max="5" step="0.1" value="0.5"><output for="w-comms" id="w-comms-out">0,5</output></div>
-        <div class="slider"><label for="w-radiation" data-i18n="prio.radiation">Menos cielo abierto</label><input type="range" id="w-radiation" min="0" max="5" step="0.1" value="0.5"><output for="w-radiation" id="w-radiation-out">0,5</output></div>
-        <div class="slider"><label for="w-science" data-i18n="prio.science">Buscar ciencia</label><input type="range" id="w-science" min="0" max="5" step="0.1" value="1"><output for="w-science" id="w-science-out">1,0</output></div>
+      <fieldset class="prio"><legend data-i18n="prio.legend">Route priorities</legend>
+        <div class="slider"><label for="w-energy" data-i18n="prio.energy">Save energy</label><input type="range" id="w-energy" min="0" max="5" step="0.1" value="1"><output for="w-energy" id="w-energy-out">1.0</output></div>
+        <div class="slider"><label for="w-risk" data-i18n="prio.risk">Avoid loose sand</label><input type="range" id="w-risk" min="0" max="5" step="0.1" value="1"><output for="w-risk" id="w-risk-out">1.0</output></div>
+        <div class="slider"><label for="w-comms" data-i18n="prio.comms">Keep comms link</label><input type="range" id="w-comms" min="0" max="5" step="0.1" value="0.5"><output for="w-comms" id="w-comms-out">0.5</output></div>
+        <div class="slider"><label for="w-radiation" data-i18n="prio.radiation">Less open sky</label><input type="range" id="w-radiation" min="0" max="5" step="0.1" value="0.5"><output for="w-radiation" id="w-radiation-out">0.5</output></div>
+        <div class="slider"><label for="w-science" data-i18n="prio.science">Seek science</label><input type="range" id="w-science" min="0" max="5" step="0.1" value="1"><output for="w-science" id="w-science-out">1.0</output></div>
       </fieldset>
 
       <div class="spe-zone">
         <button id="spe" type="button" class="spe" aria-pressed="false" aria-describedby="spe-sub">
           <svg aria-hidden="true"><use href="#s-solar"/></svg>
-          <span class="spe-label" id="spe-label" data-i18n="spe.button">Simular tormenta solar</span>
-          <span class="spe-sub" id="spe-sub" data-i18n="spe.sub">SPE · tormenta real de mayo de 2024</span>
+          <span class="spe-label" id="spe-label" data-i18n="spe.button">Simulate solar storm</span>
+          <span class="spe-sub" id="spe-sub" data-i18n="spe.sub">SPE · real May 2024 storm</span>
         </button>
       </div>
       <div class="spe-slot">
         <section id="spe-panel" class="z535" data-tone="warning" role="alert" aria-labelledby="spe-t" hidden>
           <div class="symbol"><svg aria-hidden="true"><use href="#s-solar"/></svg></div>
-          <h2 class="band" id="spe-t"><svg class="glyph" aria-hidden="true"><use href="#g-solar"/></svg><span data-i18n="spe.title">Advertencia · tormenta solar</span></h2>
+          <h2 class="band" id="spe-t"><svg class="glyph" aria-hidden="true"><use href="#g-solar"/></svg><span data-i18n="spe.title">Warning · solar storm</span></h2>
           <div class="body" id="spe-body"></div>
         </section>
       </div>
+      </section>
+      <section id="pane-env" class="pane" role="tabpanel" aria-labelledby="tab-env" hidden></section>
+      <section id="pane-log" class="pane" role="tabpanel" aria-labelledby="tab-log" hidden></section>
     </aside>
     <section id="validacion" class="z535 card-val" data-tone="neutral" aria-labelledby="val-t" hidden>
-      <h2 class="band" id="val-t"><span data-i18n="val.title">Validación</span></h2>
+      <h2 class="band" id="val-t"><span data-i18n="val.title">Validation</span></h2>
       <div class="body" id="val-body"></div>
     </section>
     </div>
   </main>
 
+  <dialog id="hub-dialog"></dialog>
+  <dialog id="clock-dialog"></dialog>
+  <dialog id="log-dialog"></dialog>
+  <div id="toast" class="toast-stack" aria-live="polite"></div>
   <footer class="credits" id="credits"></footer>
 
+  <script src="vendor/leaflet/leaflet.js"></script>
   <script type="module" src="main.js"></script>
   <script type="module" src="cards.js"></script>
 </body>

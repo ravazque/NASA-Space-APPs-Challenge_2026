@@ -74,4 +74,4 @@ function val({ data: { validation: v, cfg, traversePct, basePct }, t, num }) {
 }
 
 document.addEventListener("ariadne:render", (e) => { dest(e.detail); val(e.detail); });
-if (window.ARIADNE) { dest(window.ARIADNE); val(window.ARIADNE); }
+if (window.ARIADNE?.data && window.ARIADNE.t) { dest(window.ARIADNE); val(window.ARIADNE); }

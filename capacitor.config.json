@@ -1,0 +1,7 @@
+{
+  "appId": "org.ariadne.app",
+  "appName": "ARIADNE",
+  "webDir": "app/web",
+  "server": { "androidScheme": "http", "cleartext": true },
+  "android": { "allowMixedContent": true }
+}
