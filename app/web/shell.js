@@ -116,6 +116,7 @@ function applyGuide() {
   document.body.toggleAttribute("data-guide", on);
   $("guide-bar").hidden = !on;
   if (on) {
+    if (state.ui.drawer) set("ui", { drawer: false });
     if (!state.ui.follow) set("ui", { follow: true });
     document.documentElement.requestFullscreen?.().catch(() => {});
     renderGuide();
@@ -281,6 +282,7 @@ function activeAlerts() {
   if (!isNarrow()) return [];
   const found = [];
   for (const [id, read] of ALERTS) {
+    if (id === "safe" && state.ui.guide) continue;
     const alert = read();
     if (alert) found.push({ id, ...alert });
   }
@@ -389,7 +391,9 @@ function setExpanded(expanded) {
   document.body.toggleAttribute("data-expand", expanded);
   button.setAttribute("aria-pressed", String(expanded));
   button.firstElementChild.textContent = t(expanded ? "core.collapse" : "core.expand");
-  if (expanded) document.querySelector(".side-col").scrollTop = 0;
+  if (!expanded) return;
+  document.querySelector(".side-col").scrollTop = 0;
+  if (state.ui.drawer) set("ui", { drawer: false });
 }
 
 const isExpanded = () => document.body.hasAttribute("data-expand");

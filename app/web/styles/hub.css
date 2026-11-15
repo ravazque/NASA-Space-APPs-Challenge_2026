@@ -33,8 +33,10 @@
 .hub-peers li:has(.none) { display: block; }
 .hub-peers .none { display: block; padding: var(--s2) 0; color: var(--ink-2); }
 
+#hub-join { min-height: 1.5rem; display: inline-flex; align-items: center; }
 @media (pointer: coarse), (max-width: 899px) {
   .sync-chip .chip { min-height: var(--tap); }
   .hub-form input, .hub-form select, .hub-form .btn { min-height: var(--tap); }
+  #hub-join { min-height: var(--tap); display: inline-flex; align-items: center; }
 }
 @media (max-width: 599px) { .sync-chip .chip .more { display: none; } .sync-chip .chip { padding-inline: var(--s2); gap: var(--s1); } }

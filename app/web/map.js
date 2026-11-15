@@ -128,7 +128,6 @@ function chain(segments) {
     used[i] = 1;
     const line = [...segments[i]];
 
-    // Walk forward from the last point, then reverse and walk the other end
     for (let pass = 0; pass < 2; pass++) {
       for (;;) {
         const end = line[line.length - 1];
@@ -1376,9 +1375,11 @@ function keepMapFitted() {
   const fitOnce = () => {
     if (fitted || !host.clientWidth || !host.clientHeight) return;
     fitted = true;
+    map.setMaxBounds(null);
     map.invalidateSize({ pan: false });
     fit();
     limitZoom();
+    map.setMaxBounds(tileBounds);
   };
 
   new ResizeObserver(() => {

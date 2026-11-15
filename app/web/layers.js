@@ -1071,6 +1071,7 @@ export async function init(ctx) {
     profile: state.ui.profile,
   };
   on("ui", (ui) => {
+    const opened = ui.drawer && ui.drawer !== seen.drawer;
     if (ui.raster !== seen.raster) {
       drawRaster();
       rasterLegend();
@@ -1080,12 +1081,12 @@ export async function init(ctx) {
       safetyLegend();
     }
     if (ui.profile !== seen.profile) safetyLegend();
-    if (ui.drawer !== seen.drawer && ui.drawer) $("layers-t")?.focus();
     if (ui.raster !== seen.raster || ui.show !== seen.show) {
       saveSettings({ raster: ui.raster, show: ui.show });
     }
     seen = { raster: ui.raster, show: ui.show, drawer: ui.drawer, profile: ui.profile };
     syncControls();
+    if (opened) $("layers-t")?.focus();
   });
 
   on("env", () => {

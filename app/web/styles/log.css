@@ -13,7 +13,7 @@
 .log-acts { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s2); }
 
 .log-filter { display: flex; flex-wrap: wrap; gap: var(--s1); }
-.log-chip { appearance: none; display: inline-flex; align-items: center; gap: var(--s1); min-height: var(--tap); padding: 0 var(--s2); border: var(--hair) solid var(--ink);
+.log-chip { appearance: none; min-width: var(--tap); justify-content: center; display: inline-flex; align-items: center; gap: var(--s1); min-height: var(--tap); padding: 0 var(--s2); border: var(--hair) solid var(--ink);
   background: transparent; font-weight: 600; font-size: var(--t-sm); cursor: pointer; }
 .log-chip:hover { background: var(--ground-2); }
 .log-chip[aria-pressed="true"] { background: var(--ink); color: var(--ground); }
