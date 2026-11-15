@@ -1,52 +1,78 @@
 # ARIADNE
 
+[![CI](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/actions/workflows/android.yml/badge.svg)](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/actions/workflows/android.yml)
+[![Live demo](https://img.shields.io/badge/demo-GitHub%20Pages-1f6feb)](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/)
+[![APK](https://img.shields.io/badge/Android-APK-3ddc84)](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/download/apk-latest/ariadne-debug.apk)
+[![Licence: MIT](https://img.shields.io/badge/licence-MIT-lightgrey)](LICENSE)
+
 **EN** · [ES](#español)
 
-> A field network for the spacewalk: where do we walk, can we get back, and what do we do if a storm arrives. Several devices, one shared plan, no internet.
+> An offline field network for a spacewalk on Mars: where do we walk, can we still get back, and what do we do if a dust storm arrives. Several devices, one shared plan, no internet.
 
-![ARIADNE console: route, safe-return limit, field-log markers, Mars clock and sync chip](docs/img/v2-console.png)
-
-| | |
-|---|---|
-| ![Layer drawer](docs/img/v2-layers.png) | ![Field log](docs/img/v2-log.png) |
-| ![Two devices, one plan](docs/img/v2-two-devices.png) | ![v1 solar-storm drill](docs/img/v1-spe.png) |
+![ARIADNE console: route, safe-return limit, dust-storm warning and synced crew](docs/img/console.png)
 
 Entry for NASA Space Apps 2026, *Mars Surface Exploration Map*. ARIADNE is not affiliated with or endorsed by NASA.
 
-## Concept
+## Try it
 
-A signal takes 3 to 22 minutes between Mars and Earth, so a crew on a spacewalk (EVA) decides alone. ARIADNE is the offline guide, route and log tool they would carry:
-
-1. **Route.** The walking route with the least energy for a person in a suit at 0.38 g (Pandolf), around steep slopes, loose sand and large rocks, with a **safe-return limit** that shrinks as the EVA clock runs.
-2. **Field network.** Phones, tablets and a laptop on the same Wi-Fi share one plan through a central **hub**: ordered updates, leased locks ("bloqueos") on zones and equipment, an append-only field log (fault, hazard, route deviation, sample, equipment...) that **changes other devices' routes**, crew positions and measured latency. If the hub drops, devices keep working and catch up.
-3. **Environment.** A Mars clock (NASA GISS Mars24) that replays a real MEDA sol or runs on any date, with 36 layers in 6 categories (navigation, topography, geology, meteorology, atmosphere, radiation) and a dust-storm hazard. Every value is tagged `MEASURED`, `DERIVED`, `MODEL`, `SIMULATED` or `REPORTED`.
-
-On Mars the hub would be the habitat and the sensors (weather, dosimeter, seismometer, orbiter relay) would feed it; in the demo the hub is a laptop and the sensors are replayed or simulated.
-
-## Zone
-
-Jezero crater, 7.1 x 3.9 km (lon 77.295 to 77.415, lat 18.440 to 18.505), a 193 x 356 grid of 20 m cells. The default EVA goes from the *Three Forks* sample depot to *Cheyava Falls*, where Perseverance found a potential biosignature (not confirmed life): 7.28 km, 2 h 32 min on foot. Basemap: NASA HiRISE 25 cm tiles cached offline.
-
-## Objectives (what the challenge asks, what ARIADNE does)
-
-| Challenge | ARIADNE |
+| | |
 |---|---|
-| Layered, integrated view of a route or place | Offline Leaflet map, 36 layers in 6 categories, passage profiles for foot, vehicle and delicate cargo |
-| At least three kinds of data | Optical (HiRISE), topography (DTM), thermal (THEMIS), minerals (CRISM), geology (USGS), atmosphere (MEDA), radiation and space weather (RAD, DONKI) |
-| Astronaut safety, space weather, radiation | Solar-storm drill, dust-storm hazard marker, radiation layers with crew-protection info, safe-return limit |
-| Obstacle-avoiding route, mobility with load | Slopes over 18 degrees forbidden, loose sand and large rocks avoided, Pandolf energy with an 80 kg crew member and 50 kg load |
-| Imagery of the destination | Real Perseverance photos at Cheyava Falls, credited |
+| **Browser** | [ravazque.github.io/NASA-Space-APPs-Challenge_2026](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/) (solo mode, add `?sim=storm_eva` for the dust-storm scenario) |
+| **Android** | [`ariadne-debug.apk`](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/download/apk-latest/ariadne-debug.apk), rebuilt by CI on every push to `main` |
+| **LAN, several devices** | `make up` on a laptop, then scan the QR it prints from phones on the same Wi-Fi |
+
+## Why
+
+A message takes 3 to 22 minutes between Mars and Earth, so a crew out on an EVA has to decide on its own. ARIADNE is the guide they would carry:
+
+1. **Route.** The lowest-cost walking route for a suited astronaut at 0.38 g (Pandolf energy model), avoiding slopes over 18°, loose sand and large rocks, with a **safe-return limit** that shrinks as the EVA clock runs.
+2. **Field network.** Phones, tablets and a laptop on the same Wi-Fi share one plan through a **hub**: ordered updates, leased locks on zones and equipment, and an append-only field log (fault, hazard, sample, deviation...) that **reroutes everyone else**. If the hub drops, devices keep working and catch up when it returns.
+3. **Environment.** A Mars clock (NASA GISS Mars24) that replays a real Perseverance MEDA sol, 36 map layers in 6 categories and a dust-storm hazard. Every value is tagged `MEASURED`, `DERIVED`, `MODEL`, `SIMULATED` or `REPORTED`.
+
+| Live status for the base | Layers |
+|---|---|
+| ![Live status view with environment readings](docs/img/status.png) | ![Layer drawer with data tags](docs/img/layers.png) |
+
+| Phone | Guide mode |
+|---|---|
+| <img src="docs/img/phone.png" alt="Plan view on a phone" width="300"> | <img src="docs/img/phone-guide.png" alt="Guide mode on a phone: distance, time and turn-back countdown" width="300"> |
+
+## How it works
+
+```
+ Python pipeline (offline, once)        app/web (any browser or the APK)           app/hub (laptop on the LAN)
+ ───────────────────────────────        ───────────────────────────────           ───────────────────────────
+ NASA / USGS sources                    store.js  pub/sub state                   server.mjs  HTTP + WebSocket
+   → rasterio windows                   pathfind.js  Dijkstra + MinHeap   ◄─ ws ─► single authority, seq ordering
+   → 193 × 356 grid of 20 m cells       map.js  Leaflet 1.9.4, offline tiles      leases + fencing tokens
+   → JSON + WebP in app/web/data        sync-core.js  shared reducer ◄──────────► same reducer, JSONL persistence
+```
+
+- **Frontend:** plain ES modules, no framework and no bundler. One store with publish/subscribe, every module exposes `init(ctx)`. Leaflet is vendored so the page works with no network.
+- **Routing:** Dijkstra with a binary heap over 68,708 cells, cost layers kept in `Float32Array`s; about 30 ms for a full route on a laptop.
+- **Sync:** the hub is the single source of order. Clients send operations with a client id for idempotency, the hub stamps a sequence number and broadcasts; both sides apply them with the same reducer (`sync-core.js`). Locks are leases with fencing tokens, so a device that comes back late cannot overwrite a newer holder.
+- **Data pipeline:** Python 3 with `rasterio`, `numpy` and `pillow` reads only the windows it needs from remote GeoTIFFs and writes compact JSON and WebP that ship with the app.
+- **Android:** the same `app/web` wrapped with Capacitor 7.
+- **Tests:** Node's built-in `node:test`, unit tests plus an end-to-end test through a real hub on a free port.
+
+```
+app/web        the app (HTML, CSS, ES modules, data, offline tiles)
+app/hub        LAN hub (Node 20, ws)
+app/pipeline   scripts that download and prepare the NASA data
+android        Capacitor Android project
+.github        CI: tests, APK build and release, GitHub Pages
+```
 
 ## Quick start
 
-Needs Node 20+ (and Python 3 for `make serve`). `make help` lists everything:
+Needs Node 20+ (and Python 3 for `make serve` or `make data`). `make help` lists everything:
 
 ```text
 make up            install, test and start the hub (app + LAN sync + QR)   -> http://localhost:8090
 make hub           start the hub only (TOKEN=secret protects the Base role)
 make sim           hub + simulated crew, rover and dust storm (SIM=storm_eva)
 make serve         app only on :8000, solo mode, no sync
-make test          138 Node tests, about 15 s
+make test          Node tests, about 15 s
 make apk           build the debug Android APK (JDK 21 + Android SDK)
 make data          rebuild data from NASA sources (needs network)
 make tiles         download the HiRISE tiles z13 to z17
@@ -54,60 +80,60 @@ make clean         remove local envs and build outputs
 make fclean        clean + downloads, tiles and caches (then: make data tiles)
 ```
 
-Join from phones: `make hub` prints a QR and the laptop's LAN address; scan it on the same Wi-Fi or hotspot. The page is English by default; use the `EN | ES` switch in the header (or `?lang=es`).
+The page is in English by default; switch with `EN | ES` in the header or `?lang=es`.
 
-## Simulation mode
+### Demo with one laptop
 
-One laptop can demo the whole multi-device story. `make sim` runs a scenario that fakes other astronauts, a rover, supplies, a weather change and a dust storm, all tagged `SIMULATED`:
+`make sim` runs a scenario with simulated astronauts, a rover, a weather change and a dust storm, all tagged `SIMULATED`:
 
 1. `make sim`
-2. Open `http://localhost:8090/?crew=EV1` and, side by side, `http://localhost:8090/?crew=BASE&role=base`.
-3. Watch EV2 (simulated) report a fault on the route and both windows reroute; lock a zone in one window and see it in the other with the latency; see WARNING during the afternoon wind, then the dust storm jump straight to DANGER and the NO-GO panel.
+2. Open `http://localhost:8090/?crew=EV1` and, next to it, `http://localhost:8090/?crew=BASE&role=base`.
+3. EV2 reports a fault on the route and both windows reroute. Lock a zone in one window and watch it appear in the other with the measured latency. The afternoon wind raises a warning, then the dust storm jumps to danger and the NO-GO panel.
 
-Without a hub (for example a static copy), `?sim=storm_eva` runs the same scenario inside one window.
+Without a hub, `?sim=storm_eva` runs the same scenario inside a single window.
 
-## Android
+### Android
 
-Debug APK built by GitHub Actions on every push (workflow artifact `ariadne-debug-apk`); published to the **Releases** page as `apk-latest` (`ariadne-debug.apk`) from `main` and for `v*` tags. Locally: install JDK 21 and the Android cmdline-tools (`brew install openjdk@21 && brew install --cask android-commandlinetools` on macOS, `jdk21-openjdk` + Android Studio's SDK on Linux), then `make apk` (output `android/app/build/outputs/apk/debug/app-debug.apk`, install with `adb install -r`). In the app, tap the sync chip and enter the hub's `ip:port`.
+CI builds a debug APK on every push and publishes it on the **Releases** page as `apk-latest`. To build it locally, install JDK 21 and the Android command-line tools (`brew install openjdk@21 && brew install --cask android-commandlinetools` on macOS, `jdk21-openjdk` plus the Android Studio SDK on Linux) and run `make apk`. Install with `adb install -r android/app/build/outputs/apk/debug/app-debug.apk`, then tap the sync chip in the app and enter the hub's `ip:port`.
 
-## APIs and data used
+## Zone
 
-Everything is fetched ahead of time and committed; the running app makes no network calls except the WebSocket to your own hub. Keys: only DONKI needs one, `NASA_API_KEY` in `app/.env` (git-ignored; `DEMO_KEY` otherwise).
+Jezero crater, 7.1 × 3.9 km (lon 77.295 to 77.415, lat 18.440 to 18.505). The default EVA goes from the *Three Forks* sample depot to *Cheyava Falls*, where Perseverance found a potential biosignature (not confirmed life): 7.28 km, about 2 h 32 min on foot.
 
-| Source | Main call | For |
-|---|---|---|
-| NASA Mars Trek WMTS | `trek.nasa.gov/tiles/Mars/EQ/JEZ_hirise_soc_006_orthoMosaic_25cm_.../1.0.0/default/default028mm/{z}/{row}/{col}.png` | Offline HiRISE basemap |
-| USGS Astrogeology HiRISE DTM and THEMIS (Astropedia) | HTTP range read of GeoTIFF/cube windows with `rasterio` | Elevation, slope, relief, thermal inertia |
-| USGS SIM 3464 (ArcGIS FeatureServer) | `.../Jezero_FeatureServiceFromPro/FeatureServer/8/query?f=geojson` | Geologic units |
-| Zenodo CRISM | `zenodo.org/api/records/5575824/files/jezeroFinal.tif/content` | Minerals, science score |
-| Mars 2020 MMGIS | `mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_waypoints.json` | Perseverance traverse, validation |
-| NASA DONKI (api.nasa.gov) | `api.nasa.gov/DONKI/WSAEnlilSimulations?startDate=...&endDate=...&api_key=` | CME arrivals at Mars, May 2024 |
-| PDS Atmospheres Node, MEDA | CSV under `atmos.nmsu.edu/PDS/data/PDS4/Mars2020/mars2020_meda/` | Pressure, temperature, humidity, wind for 14 sols |
-| NASA Images API / Photojournal | `images-api.nasa.gov/search?nasa_id=PIA26369` | Destination photos |
-| NASA GISS Mars24 | algorithm, no call | Mars clock |
+## Data sources
 
-Limits: radiation shown in the plan is relative; the 8,100 uGy dose was measured at Gale, not Jezero; suit parameters are nominal; the geologic map is regional and pre-landing.
+Everything is downloaded ahead of time and committed. The running app makes no network calls except the WebSocket to your own hub. Only DONKI needs a key: `NASA_API_KEY` in `app/.env` (git-ignored, falls back to `DEMO_KEY`).
 
-## Build, test, deploy
+| Source | For |
+|---|---|
+| NASA Mars Trek WMTS, HiRISE 25 cm mosaic | Offline basemap |
+| USGS Astrogeology HiRISE DTM and THEMIS | Elevation, slope, relief, thermal inertia |
+| USGS SIM 3464 (ArcGIS FeatureServer) | Geologic units |
+| CRISM mineral map (Zenodo 5575824) | Minerals, science score |
+| Mars 2020 MMGIS waypoints | Real Perseverance traverse, used to validate routes |
+| NASA DONKI | CME arrivals at Mars, May 2024 |
+| PDS Atmospheres Node, MEDA | Pressure, temperature, humidity and wind for 14 sols |
+| NASA Images API / Photojournal | Destination photos |
+| NASA GISS Mars24 | Mars clock (algorithm, no call) |
 
-- **Test:** `make test` (unit tests for the engine, Mars24, environment, sync rules, locks, log, profiles and i18n, plus a LAN end-to-end test through the real hub).
-- **Build data:** `make data`, `make tiles`.
-- **Deploy:** the hub on a laptop (`make hub`), the APK (`make apk` or CI), or a static copy on GitHub Pages (solo).
+Limits: radiation in the plan is relative; the 8,100 µGy dose was measured at Gale, not Jezero; suit parameters are nominal; the geologic map is regional and pre-landing.
 
 ## Team and licence
 
-Raúl Vázquez Pérez ([@ravazque](https://github.com/ravazque)), [@NachoASD](https://github.com/NachoASD), [@ccheerry](https://github.com/ccheerry), [@ptrapero](https://github.com/ptrapero) and [@RaulMkn](https://github.com/RaulMkn). MIT, see [`LICENSE`](LICENSE). Data and photos belong to their authors (credits in the app footer). Typeface Barlow, SIL OFL 1.1. Leaflet 1.9.4, BSD-2.
+Raúl Vázquez Pérez ([@ravazque](https://github.com/ravazque)), [@NachoASD](https://github.com/NachoASD), [@ccheerry](https://github.com/ccheerry), [@ptrapero](https://github.com/ptrapero) and [@RaulMkn](https://github.com/RaulMkn).
+
+MIT, see [`LICENSE`](LICENSE). Data and photos belong to their authors (credits in the app footer). Barlow typeface under SIL OFL 1.1, Leaflet 1.9.4 under BSD-2.
 
 ---
 
 ## Español
 
-**ARIADNE** es una red de campo para el paseo espacial: dónde caminamos, si podemos volver y qué hacer si llega una tormenta. Varios dispositivos comparten un plan sin internet. Proyecto para el reto *Mars Surface Exploration Map* de NASA Space Apps 2026; no está afiliado ni respaldado por la NASA.
+**ARIADNE** es una red de campo sin internet para un paseo espacial en Marte: por dónde caminar, si todavía podemos volver y qué hacer si llega una tormenta de polvo. Varios dispositivos comparten un mismo plan. Proyecto para el reto *Mars Surface Exploration Map* de NASA Space Apps 2026; no está afiliado ni respaldado por la NASA.
 
-- **Qué es.** Una app web sin servidor ni conexión (también como APK de Android) que calcula la ruta de menor energía con traje a 0,38 g y un límite de retorno seguro. Un **hub** central en la red local (un portátil con `make hub`) ordena las operaciones, gestiona bloqueos con arrendamiento y guarda un registro de campo compartido que puede cambiar la ruta de los demás. Si el hub cae, los dispositivos siguen y se ponen al día.
-- **Zona.** Cráter Jezero, de *Three Forks* a *Cheyava Falls* (7,28 km), malla de 20 m, fondo HiRISE sin conexión.
-- **Entorno.** Reloj marciano Mars24 (en vivo, escenario o repetición de un sol medido por MEDA), 36 capas en 6 categorías y peligro de tormenta de polvo. Cada dato lleva etiqueta: `MEASURED`, `DERIVED`, `MODEL`, `SIMULATED` o `REPORTED`.
-- **Empezar.** `make help` lista los comandos; `make up` instala, prueba y arranca el hub con un QR para los móviles; `make sim` añade tripulación, rover y tormenta simulados para probar varios dispositivos con un solo portátil (`?sim=storm_eva` sin hub); `make test` pasa los 138 tests; `make apk` compila el APK.
-- **Idioma.** Inglés por defecto; el conmutador `EN | ES` de la cabecera o `?lang=es` cambia a español.
-- **Objetivos y APIs.** Ruta, red de campo y entorno (ver *Concept* arriba); las APIs y fuentes de datos están en la tabla *APIs and data used* de arriba.
+- **Probarlo.** En el navegador: [demo en GitHub Pages](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/?lang=es). En Android: [descargar el APK](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/download/apk-latest/ariadne-debug.apk). En red local: `make up` en un portátil y escanear el QR desde los móviles.
+- **Ruta.** Calcula la ruta de menor coste para un astronauta con traje a 0,38 g, evitando pendientes de más de 18°, arena suelta y rocas grandes, con un límite de retorno seguro que se reduce con el reloj de la EVA.
+- **Red de campo.** Un hub en la red local ordena las operaciones, gestiona bloqueos con arrendamiento y guarda un registro de campo compartido que recalcula la ruta de los demás. Si el hub cae, los dispositivos siguen funcionando y se ponen al día al volver.
+- **Entorno.** Reloj marciano Mars24 que reproduce un sol real medido por MEDA, 36 capas en 6 categorías y peligro de tormenta de polvo. Cada dato lleva su etiqueta de origen.
+- **Stack.** JavaScript con módulos ES sin framework ni bundler, Leaflet, hub en Node con WebSocket, pipeline de datos en Python y APK con Capacitor. Tests con `node:test` y CI en GitHub Actions.
+- **Comandos.** `make help` los lista todos; `make sim` simula tripulación, rover y tormenta con un solo portátil; `make test` pasa los tests; `make apk` compila el APK.
 - **Equipo.** Raúl Vázquez Pérez (@ravazque), @NachoASD, @ccheerry, @ptrapero y @RaulMkn. Licencia MIT.
