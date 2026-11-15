@@ -36,4 +36,4 @@
   .sync-chip .chip { min-height: var(--tap); }
   .hub-form input, .hub-form select, .hub-form .btn { min-height: var(--tap); }
 }
-@media (max-width: 599px) { .sync-chip .chip .more { display: none; } }
+@media (max-width: 599px) { .sync-chip .chip .more { display: none; } .sync-chip .chip { padding-inline: var(--s2); gap: var(--s1); } }

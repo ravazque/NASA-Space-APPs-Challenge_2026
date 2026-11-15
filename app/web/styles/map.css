@@ -48,7 +48,7 @@
 .sc-row { display: flex; align-items: flex-start; gap: var(--s3); justify-content: space-between; }
 .sc-bar { display: flex; height: 6px; border: var(--hair) solid var(--ink); }
 .sc-bar i { flex: 1; background: var(--ground); } .sc-bar i.k { background: var(--ink); }
-.sc-n { font: 700 var(--t-xs)/1 var(--font); text-align: center; margin-top: -2px; } .sc-n b { display: block; font-size: .6rem; }
+.sc-n { font: 700 var(--t-xs)/1 var(--font); text-align: center; margin-top: -2px; } .sc-n b { display: block; font-size: var(--t-xs); }
 .sc-lab { display: flex; justify-content: space-between; margin-top: 3px; } .sc-lab span { flex: none; } .sc-lab span:nth-child(2) { margin: 0 auto; }
 .sc-cap { margin-top: 2px; color: var(--ink-2); }
 .map-readout { padding: 2px 8px; font: 600 var(--t-xs)/1.4 var(--font); font-variant-numeric: tabular-nums; min-width: 17.5rem; }
@@ -59,6 +59,8 @@
   font: 600 1.5rem/1 var(--font); cursor: pointer; touch-action: manipulation; }
 .tool svg { width: 1.5rem; height: 1.5rem; }
 .tool:hover { background: var(--ground-2); } .tool:active, .tool[aria-pressed="true"] { background: var(--ink); color: var(--ground); }
+.tool[data-tool="report"] { width: 3.5rem; height: 3.5rem; align-self: flex-end; background: var(--ink); color: var(--ground); }
+.tool[data-tool="report"]:hover { background: var(--ink-2); }
 .tool:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 
 .map-pick { position: absolute; z-index: 1100; left: var(--s2); right: calc(var(--tap) + 2 * var(--s2)); top: var(--s2); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); padding: var(--s2) var(--s3);

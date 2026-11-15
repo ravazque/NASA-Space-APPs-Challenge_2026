@@ -6,7 +6,7 @@ export const register = (dict) => { for (const l of Object.keys(DICT)) Object.as
 const KEY = "ariadne.lang", LANGS = ["en", "es"];
 let lang = (() => {
   const q = new URLSearchParams(globalThis.location?.search ?? "").get("lang");
-  if (LANGS.includes(q)) return q;
+  if (LANGS.includes(q)) { try { globalThis.localStorage?.setItem(KEY, q); } catch {} return q; }
   try { const s = globalThis.localStorage?.getItem(KEY); if (LANGS.includes(s)) return s; } catch {}
   return "en";
 })();
