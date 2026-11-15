@@ -12,9 +12,12 @@ Proyecto para el reto *Mars Surface Exploration Map* de NASA Space Apps 2026 ([`
 ## Ejecutar
 
 ```bash
-python3 -m http.server -d app/web 8000      # → http://localhost:8000
-node app/web/pathfind.test.mjs              # tests del motor (Node 20 o superior)
+make            # instala dependencias, pasa los tests y levanta → http://localhost:8000
+make serve      # solo levantar (basta con python3)
+make data       # regenerar los datos desde las fuentes NASA (necesita red)
 ```
+
+Sin `make`: `python3 -m http.server -d app/web 8000` y `node app/web/pathfind.test.mjs` (Node 20 o superior).
 
 Los datos ya están en `app/web/data/`. Para regenerarlos, ver [`app/README.md`](app/README.md). El idioma es español por defecto y se cambia a inglés con un clic o abriendo `http://localhost:8000/?lang=en`.
 
@@ -98,9 +101,12 @@ Entry for NASA Space Apps 2026, *Mars Surface Exploration Map* ([`CHALLENGE.md`]
 ### Run
 
 ```bash
-python3 -m http.server -d app/web 8000      # → http://localhost:8000
-node app/web/pathfind.test.mjs              # engine tests (Node 20 or newer)
+make            # installs dependencies, runs the tests and serves → http://localhost:8000
+make serve      # serve only (python3 is enough)
+make data       # rebuild the data from the NASA sources (needs network)
 ```
+
+Without `make`: `python3 -m http.server -d app/web 8000` and `node app/web/pathfind.test.mjs` (Node 20 or newer).
 
 The data is already in `app/web/data/`. To regenerate it, see [`app/README.md`](app/README.md). The UI is Spanish by default with a one-click switch to English, or open `http://localhost:8000/?lang=en`.
 
