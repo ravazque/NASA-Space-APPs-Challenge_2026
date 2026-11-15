@@ -1,5 +1,9 @@
 # ARIADNE
 
+### ▶ [Open the live demo](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/) · [Dust-storm demo](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/?sim=storm_eva) · [Download the Android APK](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/download/apk-latest/ariadne-debug.apk)
+
+Runs in the browser, nothing to install. [Versión en español](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/?lang=es).
+
 [![CI](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/actions/workflows/android.yml/badge.svg)](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/actions/workflows/android.yml)
 [![Live demo](https://img.shields.io/badge/demo-GitHub%20Pages-1f6feb)](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/)
 [![APK](https://img.shields.io/badge/Android-APK-3ddc84)](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/download/apk-latest/ariadne-debug.apk)
