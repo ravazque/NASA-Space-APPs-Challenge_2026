@@ -2,7 +2,16 @@ import { state, set, on } from "./store.js";
 import { t, num, date, pick, getLang, shown } from "./i18n.js";
 import { $, tag } from "./ui.js";
 import { submit } from "./sync.js";
-import { planningGrid, dijkstra, shortestPath, pathStats, evaTimeline, stateAt, turnaround, walkbackMask } from "./pathfind.js";
+import {
+  planningGrid,
+  dijkstra,
+  shortestPath,
+  pathStats,
+  evaTimeline,
+  stateAt,
+  turnaround,
+  walkbackMask,
+} from "./pathfind.js";
 import { PROFILES, passMask, routeEnergy, planPenalty, blockReason, limits } from "./profiles.js";
 import { overlay, entryCells, lockCells } from "./effects.js";
 import { SOL_S } from "./marsclock.js";
@@ -10,287 +19,813 @@ import { SOL_S } from "./marsclock.js";
 const WEIGHTS = ["energy", "risk", "comms", "radiation", "science"];
 const REFUGE_SVF_PERCENTILE = 0.05;
 const MARS_HOUR_S = SOL_S / 24;
+const WEIGHT_SEND_INTERVAL_MS = 250;
+const ELAPSED_STEP_S = 300;
 
-let ctx, d, rows, cols, cellM, cfg, layers, planLayers, habitat, cheyava, refugeSvf;
-let spe = null, speFrom = -1, lastGoal = -1, manualS = null;
-let cache = { key: null }, routeCache = { key: null }, baseEnergy = {}, penalty = {}, forbidPrev = null;
+let ctx;
+let data;
+let rows;
+let cols;
+let cellM;
+let cfg;
+let layers;
+let planLayers;
+let habitat;
+let cheyava;
+let refugeSvf;
 
-const goalCell = () => { const g = state.doc.settings.goal; return Number.isInteger(g) && g >= 0 && g < rows * cols ? g : cheyava; };
-const profileId = () => (PROFILES[state.ui.profile] ? state.ui.profile : "foot");
-const speedOf = (p) => PROFILES[p]?.speed_ms ?? cfg.walk_speed_ms;
-const walkMin = (m) => m / cfg.walk_speed_ms / 60;
-const duration = (min) => { const m = Math.round(min); return m < 60 ? t("dur.m", { m }) : m % 60 === 0 ? t("dur.h", { h: m / 60 }) : t("dur.hm", { h: Math.floor(m / 60), m: m % 60 }); };
-const hhmm = (h) => { const m = Math.round(h * 60); return `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`; };
+let spe = null;
+let speFrom = -1;
+let lastGoal = -1;
+let manualS = null;
 
-function base(profile) {
-  const key = `${profile}|${ctx.extra ? 1 : 0}`;
-  if (baseEnergy[key]) return baseEnergy[key];
-  const e = Float32Array.from(routeEnergy(profile, layers, ctx.extra ?? null, cellM, cfg)), pass = passMask(profile, layers, ctx.extra ?? null, cfg);
-  for (let i = 0; i < e.length; i++) if (!pass[i]) e[i] = Infinity;
-  return (baseEnergy[key] = e);
+let footCache = { key: null };
+let baseEnergyCache = {};
+let penaltyCache = {};
+let forbidPrev = null;
+let current = {};
+
+function extraLayers() {
+  return ctx.extra ?? null;
 }
-const penaltyOf = (profile) => (profile in penalty ? penalty[profile] : (penalty[profile] = planPenalty(profile, layers, ctx.extra ?? null)));
-function withBlocks(b, mult) {
-  let out = b;
-  for (let i = 0; i < mult.length; i++) if (mult[i] === Infinity && b[i] !== Infinity) { if (out === b) out = Float32Array.from(b); out[i] = Infinity; }
+
+function goalCell() {
+  const goal = state.doc.settings.goal;
+  const valid = Number.isInteger(goal) && goal >= 0 && goal < rows * cols;
+  return valid ? goal : cheyava;
+}
+
+function profileId() {
+  return PROFILES[state.ui.profile] ? state.ui.profile : "foot";
+}
+
+function speedOf(profile) {
+  return PROFILES[profile]?.speed_ms ?? cfg.walk_speed_ms;
+}
+
+function walkMin(meters) {
+  return meters / cfg.walk_speed_ms / 60;
+}
+
+function duration(minutes) {
+  const m = Math.round(minutes);
+  if (m < 60) return t("dur.m", { m });
+  if (m % 60 === 0) return t("dur.h", { h: m / 60 });
+  return t("dur.hm", { h: Math.floor(m / 60), m: m % 60 });
+}
+
+function hhmm(hours) {
+  const minutes = Math.round(hours * 60);
+  const hh = String(Math.floor(minutes / 60) % 24).padStart(2, "0");
+  const mm = String(minutes % 60).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function baseEnergy(profile) {
+  const key = `${profile}|${extraLayers() ? 1 : 0}`;
+  if (baseEnergyCache[key]) return baseEnergyCache[key];
+
+  const energy = Float32Array.from(routeEnergy(profile, layers, extraLayers(), cellM, cfg));
+  const passable = passMask(profile, layers, extraLayers(), cfg);
+  for (let i = 0; i < energy.length; i++) {
+    if (!passable[i]) energy[i] = Infinity;
+  }
+  baseEnergyCache[key] = energy;
+  return energy;
+}
+
+function penaltyOf(profile) {
+  if (!(profile in penaltyCache)) {
+    penaltyCache[profile] = planPenalty(profile, layers, extraLayers());
+  }
+  return penaltyCache[profile];
+}
+
+function withBlocks(energy, multiplier) {
+  let out = energy;
+  for (let i = 0; i < multiplier.length; i++) {
+    if (multiplier[i] !== Infinity || energy[i] === Infinity) continue;
+    if (out === energy) out = Float32Array.from(energy);
+    out[i] = Infinity;
+  }
   return out;
 }
-const ovl = (profile) => overlay({
-  entries: state.doc.logOrder.map((id) => state.doc.log[id]).filter(Boolean), locks: Object.values(state.doc.locks),
-  me: state.ui.me, profile, rows, cols, cellM, nowUtcMs: state.clock.utcMs ?? Date.now(), protect: [habitat, state.plan.at?.cell ?? habitat],
-});
+
+function buildOverlay(profile) {
+  const doc = state.doc;
+  return overlay({
+    entries: doc.logOrder.map((id) => doc.log[id]).filter(Boolean),
+    locks: Object.values(doc.locks),
+    me: state.ui.me,
+    profile,
+    rows,
+    cols,
+    cellM,
+    nowUtcMs: state.clock.utcMs ?? Date.now(),
+    protect: [habitat, state.plan.at?.cell ?? habitat],
+  });
+}
+
 function footGrids() {
   const key = [state.doc.log, state.doc.locks, state.ui.me.deviceId, ctx.extra];
-  if (cache.key && key.every((v, i) => v === cache.key[i])) return cache;
-  const o = ovl("foot"), eFoot = withBlocks(base("foot"), o.mult), home = dijkstra(eFoot, rows, cols, habitat);
-  return (cache = { key, mult: o.mult, eFoot, home });
+  if (footCache.key && key.every((value, i) => value === footCache.key[i])) return footCache;
+
+  const blocks = buildOverlay("foot");
+  const eFoot = withBlocks(baseEnergy("foot"), blocks.mult);
+  const home = dijkstra(eFoot, rows, cols, habitat);
+  footCache = { key, mult: blocks.mult, eFoot, home };
+  return footCache;
+}
+
+function routeStatus(route, energy, goal, turn) {
+  if (!route.length) return energy[goal] === Infinity ? "forbidden" : "unreachable";
+  return turn.siteS >= 0 ? "ok" : "no";
+}
+
+function explainForbidden(profile, goal) {
+  return {
+    reason: blockReason(profile, goal, layers, extraLayers(), cfg),
+    slope: layers.slope_deg[goal],
+    rough: ctx.extra?.rough_m[goal],
+    lim: limits(profile, extraLayers(), cfg),
+  };
 }
 
 function recompute(flags = {}) {
-  const prev = state.plan, doc = state.doc, profile = profileId(), goal = goalCell(), W = doc.settings.weights;
-  const f = footGrids();
-  let eRoute = f.eFoot, mult = f.mult;
-  if (profile !== "foot") { const o = ovl(profile); eRoute = withBlocks(base(profile), o.mult); mult = o.mult; }
-  const pg = planningGrid(eRoute, planLayers, W), pen = penaltyOf(profile);
-  for (let i = 0; i < pg.length; i++) if (pg[i] !== Infinity) pg[i] *= mult[i] * (pen ? pen[i] : 1);
-  const route = shortestPath(pg, rows, cols, habitat, goal);
+  const prev = state.plan;
+  const profile = profileId();
+  const goal = goalCell();
+  const foot = footGrids();
+
+  let eRoute = foot.eFoot;
+  let mult = foot.mult;
+  if (profile !== "foot") {
+    const blocks = buildOverlay(profile);
+    eRoute = withBlocks(baseEnergy(profile), blocks.mult);
+    mult = blocks.mult;
+  }
+
+  const grid = planningGrid(eRoute, planLayers, state.doc.settings.weights);
+  const penalty = penaltyOf(profile);
+  for (let i = 0; i < grid.length; i++) {
+    if (grid[i] !== Infinity) grid[i] *= mult[i] * (penalty ? penalty[i] : 1);
+  }
+
+  const route = shortestPath(grid, rows, cols, habitat, goal);
   const stats = route.length ? pathStats(route, eRoute, cols, cellM) : null;
   const tl = evaTimeline(route, eRoute, cols, cellM, { ...cfg, walk_speed_ms: speedOf(profile) });
-  const turn = turnaround(tl, f.home.dist[goal], cfg);
-  const baseSafe = !route.length ? (eRoute[goal] === Infinity ? "forbidden" : "unreachable") : turn.siteS >= 0 ? "ok" : "no";
-  const forbidWhy = baseSafe === "forbidden" ? { reason: blockReason(profile, goal, layers, ctx.extra ?? null, cfg), slope: layers.slope_deg[goal], rough: ctx.extra?.rough_m[goal], lim: limits(profile, ctx.extra ?? null, cfg) } : null;
-  const forbid = Uint8Array.from(eRoute, (v) => (v === Infinity ? 1 : 0));
-  const same = forbidPrev && forbidPrev.every((v, i) => v === forbid[i]);
-  if (!same) forbidPrev = forbid;
-  const reroute = flags.overlay && prev.route?.length ? detectReroute(prev, route, stats, mult, flags.prevDoc) : null;
-  P = { profile, goal, route, stats, tl, turn, baseSafe, forbidWhy, mult, eFoot: f.eFoot, forbid: forbidPrev, reroute, habitat, cheyava };
-  const goalChanged = goal !== lastGoal;
-  if (goalChanged) { lastGoal = goal; manualS = null; }
-  if (goalChanged) clearSpe(true); else if (spe) buildSpe();
+  const turn = turnaround(tl, foot.home.dist[goal], cfg);
+  const baseSafe = routeStatus(route, eRoute, goal, turn);
+  const forbidWhy = baseSafe === "forbidden" ? explainForbidden(profile, goal) : null;
+
+  const forbid = Uint8Array.from(eRoute, (energy) => (energy === Infinity ? 1 : 0));
+  const sameForbid = forbidPrev && forbidPrev.every((value, i) => value === forbid[i]);
+  if (!sameForbid) forbidPrev = forbid;
+
+  const reroute = flags.overlay && prev.route?.length
+    ? detectReroute(prev, route, stats, mult, flags.prevDoc)
+    : null;
+
+  current = {
+    profile,
+    goal,
+    route,
+    stats,
+    tl,
+    turn,
+    baseSafe,
+    forbidWhy,
+    mult,
+    eFoot: foot.eFoot,
+    forbid: forbidPrev,
+    reroute,
+    habitat,
+    cheyava,
+  };
+
+  if (goal !== lastGoal) {
+    lastGoal = goal;
+    manualS = null;
+    clearSpe(true);
+  } else if (spe) {
+    buildSpe();
+  }
   refresh(true);
   $("reset-goal").hidden = goal === cheyava;
 }
-let P = {};
 
 function detectReroute(prev, route, stats, mult, prevDoc) {
-  const old = prev.mult, hit = prev.route.some((c) => mult[c] > (old?.[c] ?? 1));
-  if (!hit) return null;
-  const onRoute = new Set(prev.route), crosses = (cells) => cells.some((c) => onRoute.has(c));
-  const doc = state.doc, items = [
-    ...doc.logOrder.map((id) => doc.log[id]).filter(Boolean).map((e) => ({ type: "log", id: e.id, crew: e.author?.crew, fresh: prevDoc?.log?.[e.id] !== e, cells: entryCells(e) })),
-    ...Object.values(doc.locks).map((l) => ({ type: "lock", id: l.target, crew: l.holder?.crew, fresh: prevDoc?.locks?.[l.target] !== l, cells: lockCells(l) })),
-  ].filter((it) => crosses(it.cells));
-  const c = items.filter((it) => it.fresh).at(-1) ?? items.at(-1);
-  return { deltaM: (stats?.lengthM ?? 0) - (prev.stats?.lengthM ?? 0), empty: !route.length, cause: c ? { type: c.type, id: c.id, crew: c.crew } : { type: "log", id: null, crew: null } };
+  const oldMult = prev.mult;
+  const blockedMore = prev.route.some((cell) => mult[cell] > (oldMult?.[cell] ?? 1));
+  if (!blockedMore) return null;
+
+  const onRoute = new Set(prev.route);
+  const crossesRoute = (cells) => cells.some((cell) => onRoute.has(cell));
+  const doc = state.doc;
+
+  const logItems = doc.logOrder
+    .map((id) => doc.log[id])
+    .filter(Boolean)
+    .map((entry) => ({
+      type: "log",
+      id: entry.id,
+      crew: entry.author?.crew,
+      fresh: prevDoc?.log?.[entry.id] !== entry,
+      cells: entryCells(entry),
+    }));
+  const lockItems = Object.values(doc.locks).map((lock) => ({
+    type: "lock",
+    id: lock.target,
+    crew: lock.holder?.crew,
+    fresh: prevDoc?.locks?.[lock.target] !== lock,
+    cells: lockCells(lock),
+  }));
+  const items = [...logItems, ...lockItems].filter((item) => crossesRoute(item.cells));
+
+  const cause = items.filter((item) => item.fresh).at(-1) ?? items.at(-1);
+  return {
+    deltaM: (stats?.lengthM ?? 0) - (prev.stats?.lengthM ?? 0),
+    empty: !route.length,
+    cause: cause
+      ? { type: cause.type, id: cause.id, crew: cause.crew }
+      : { type: "log", id: null, crew: null },
+  };
 }
 
 function evaSeconds() {
-  const dur = cfg.eva_duration_h * 3600, ck = state.clock;
-  if (state.ui.follow) {
-    if (ck?.utcMs != null && Number.isFinite(ck.ltst)) return Math.min(dur, Math.max(0, (ck.ltst - state.doc.settings.evaStartLtst) * MARS_HOUR_S));
+  const evaDurationS = cfg.eva_duration_h * 3600;
+  const clock = state.clock;
+  if (state.ui.follow && clock?.utcMs != null && Number.isFinite(clock.ltst)) {
+    const elapsedS = (clock.ltst - state.doc.settings.evaStartLtst) * MARS_HOUR_S;
+    return Math.min(evaDurationS, Math.max(0, elapsedS));
   }
-  return manualS ?? (P.route?.length ? Math.min(dur, Math.ceil(P.tl.tArr / 300) * 300) : 0);
+  if (manualS != null) return manualS;
+  if (!current.route?.length) return 0;
+  return Math.min(evaDurationS, Math.ceil(current.tl.tArr / ELAPSED_STEP_S) * ELAPSED_STEP_S);
 }
 
 function frontierMask(envMask, dist) {
-  const out = Uint8Array.from(envMask), known = Uint8Array.from(dist, (v) => (v === Infinity ? 0 : 1)), q = [];
-  for (let i = 0; i < known.length; i++) if (known[i]) q.push(i);
-  for (let n = 0; n < q.length; n++) {
-    const i = q[n], r = (i / cols) | 0, c = i % cols;
-    for (const j of [c > 0 ? i - 1 : -1, c + 1 < cols ? i + 1 : -1, r > 0 ? i - cols : -1, r + 1 < rows ? i + cols : -1]) if (j >= 0 && !known[j]) { known[j] = 1; out[j] = out[i]; q.push(j); }
+  const out = Uint8Array.from(envMask);
+  const known = Uint8Array.from(dist, (d) => (d === Infinity ? 0 : 1));
+  const queue = [];
+  for (let i = 0; i < known.length; i++) {
+    if (known[i]) queue.push(i);
+  }
+  for (let head = 0; head < queue.length; head++) {
+    const cell = queue[head];
+    const r = (cell / cols) | 0;
+    const c = cell % cols;
+    const neighbours = [
+      c > 0 ? cell - 1 : -1,
+      c + 1 < cols ? cell + 1 : -1,
+      r > 0 ? cell - cols : -1,
+      r + 1 < rows ? cell + cols : -1,
+    ];
+    for (const next of neighbours) {
+      if (next < 0 || known[next]) continue;
+      known[next] = 1;
+      out[next] = out[cell];
+      queue.push(next);
+    }
   }
   return out;
 }
 
 function refresh(full) {
-  if (!P.route) return;
-  const evaS = evaSeconds(), f = footGrids(), here = P.tl ? stateAt(evaS, P.tl, P.route, habitat) : { cell: habitat, spent: 0 };
-  const envMask = walkbackMask(f.home.dist, cfg.eva_energy_budget_j - here.spent, cfg.return_margin);
-  const envInside = frontierMask(envMask, f.home.dist);
-  const live = evaS <= P.turn.turnS && (cfg.eva_energy_budget_j - here.spent) * (1 - cfg.return_margin) >= f.home.dist[here.cell];
+  if (!current.route) return;
+
+  const evaS = evaSeconds();
+  const foot = footGrids();
+  const here = current.tl
+    ? stateAt(evaS, current.tl, current.route, habitat)
+    : { cell: habitat, spent: 0 };
+  const remainingJ = cfg.eva_energy_budget_j - here.spent;
+  const envMask = walkbackMask(foot.home.dist, remainingJ, cfg.return_margin);
+  const envInside = frontierMask(envMask, foot.home.dist);
+
+  const canReturn = remainingJ * (1 - cfg.return_margin) >= foot.home.dist[here.cell];
+  const live = evaS <= current.turn.turnS && canReturn;
   const storm = state.env?.hazard?.level >= 2;
-  const safe = storm ? "storm" : P.baseSafe === "ok" && !live ? "no" : P.baseSafe;
+  let safe = current.baseSafe;
+  if (storm) {
+    safe = "storm";
+  } else if (current.baseSafe === "ok" && !live) {
+    safe = "no";
+  }
+
   if (spe && here.cell !== speFrom && !full) buildSpe();
-  const el = $("elapsed"); el.value = Math.round(evaS / 60);
-  const { eFoot, ...pub } = P;
-  set("plan", { ...pub, safe, at: here, evaS, envMask, envInside, homeMin: homeMin(here.cell, f), spe, refuges: spe && spe.refuge !== habitat ? [spe.refuge] : [] });
-  renderOutputs(); renderPanels(); renderSpe(); renderFollow();
+
+  const elapsed = $("elapsed");
+  elapsed.value = Math.round(evaS / 60);
+
+  const published = { ...current };
+  delete published.eFoot;
+  set("plan", {
+    ...published,
+    safe,
+    at: here,
+    evaS,
+    envMask,
+    envInside,
+    homeMin: homeMin(here.cell, foot),
+    spe,
+    refuges: refugesOf(spe),
+  });
+  renderOutputs();
+  renderPanels();
+  renderSpe();
+  renderFollow();
 }
-function homeMin(cell, f) {
+
+function homeMin(cell, foot) {
   if (cell === habitat) return 0;
-  if (f.home.dist[cell] === Infinity) return null;
-  const path = []; for (let i = cell; i !== -1; i = f.home.prev[i]) path.push(i);
-  return walkMin(pathStats(path, f.eFoot, cols, cellM).lengthM);
+  if (foot.home.dist[cell] === Infinity) return null;
+  const path = [];
+  for (let i = cell; i !== -1; i = foot.home.prev[i]) {
+    path.push(i);
+  }
+  return walkMin(pathStats(path, foot.eFoot, cols, cellM).lengthM);
+}
+
+function refugesOf(plan) {
+  return plan && plan.refuge !== habitat ? [plan.refuge] : [];
 }
 
 function buildSpe() {
-  const from = state.plan.at?.cell ?? habitat, e = footGrids().eFoot, { dist, prev } = dijkstra(e, rows, cols, from);
-  let best = habitat, bestD = dist[habitat];
-  for (let i = 0; i < dist.length; i++) if (layers.svf[i] <= refugeSvf && dist[i] < bestD) { best = i; bestD = dist[i]; }
-  const path = [];
-  if (from !== habitat) for (let i = best; i !== -1; i = prev[i]) path.push(i);
-  path.reverse();
-  speFrom = from;
-  spe = { path, refuge: best, kind: from === habitat ? "home" : best === from ? "here" : best === habitat ? "go_home" : "shelter",
-    min: walkMin(pathStats(path, e, cols, cellM).lengthM), sky: Math.round((1 - layers.svf[best]) * 100) };
-}
-function simulateSpe() { if (spe) clearSpe(); else { buildSpe(); } refreshAfterSpe(); }
-function clearSpe(silent) { spe = null; speFrom = -1; if (!silent) refreshAfterSpe(); }
-function refreshAfterSpe() { if (!P.route) return; set("plan", { spe, refuges: spe && spe.refuge !== habitat ? [spe.refuge] : [] }); renderSpe(); }
+  const from = state.plan.at?.cell ?? habitat;
+  const energy = footGrids().eFoot;
+  const { dist, prev } = dijkstra(energy, rows, cols, from);
 
-const setUse = (svg, id) => { const u = svg.tagName === "use" ? svg : svg.querySelector("use"); id ? u.setAttribute("href", `#${id}`) : u.removeAttribute("href"); };
+  let best = habitat;
+  let bestDist = dist[habitat];
+  for (let i = 0; i < dist.length; i++) {
+    if (layers.svf[i] <= refugeSvf && dist[i] < bestDist) {
+      best = i;
+      bestDist = dist[i];
+    }
+  }
+
+  const path = [];
+  if (from !== habitat) {
+    for (let i = best; i !== -1; i = prev[i]) {
+      path.push(i);
+    }
+  }
+  path.reverse();
+
+  let kind = "shelter";
+  if (from === habitat) {
+    kind = "home";
+  } else if (best === from) {
+    kind = "here";
+  } else if (best === habitat) {
+    kind = "go_home";
+  }
+
+  speFrom = from;
+  spe = {
+    path,
+    refuge: best,
+    kind,
+    min: walkMin(pathStats(path, energy, cols, cellM).lengthM),
+    sky: Math.round((1 - layers.svf[best]) * 100),
+  };
+}
+
+function simulateSpe() {
+  if (spe) {
+    clearSpe();
+  } else {
+    buildSpe();
+  }
+  refreshAfterSpe();
+}
+
+function clearSpe(silent) {
+  spe = null;
+  speFrom = -1;
+  if (!silent) refreshAfterSpe();
+}
+
+function refreshAfterSpe() {
+  if (!current.route) return;
+  set("plan", { spe, refuges: refugesOf(spe) });
+  renderSpe();
+}
+
+function setUse(svg, id) {
+  const use = svg.tagName === "use" ? svg : svg.querySelector("use");
+  if (id) {
+    use.setAttribute("href", `#${id}`);
+  } else {
+    use.removeAttribute("href");
+  }
+}
+
+function routeDetail(plan, stats) {
+  const hasProfileKey = plan.profile !== "foot" && PROFILES[plan.profile];
+  const key = hasProfileKey ? `layers.route.${plan.profile}` : "route.detail";
+  const speed = speedOf(plan.profile);
+  return t(key, { dur: duration(stats.lengthM / speed / 60), speed: num(speed, 1) });
+}
+
+function forbiddenText(plan) {
+  const why = plan.forbidWhy;
+  const reason = why?.reason;
+  const slopeText = () => t("safe.detail.forbidden", { max: num(cfg.max_slope_deg, 0) });
+  if (plan.profile === "foot" && reason === "slope") return slopeText();
+  if (!why) return slopeText();
+  if (!reason) return t("layers.forbid.overlay");
+
+  const isRough = reason === "rough";
+  return t(`layers.forbid.${reason}`, {
+    slope: num(why.slope, 1),
+    max: num(isRough ? why.lim.rough : why.lim.slope, isRough ? 2 : 0),
+    rough: num(why.rough ?? 0, 2),
+  });
+}
+
+function energyTexts(spent, budget, over) {
+  return {
+    value: t("energy.value", { pct: num((100 * spent) / budget, 0) }),
+    detail: t(over ? "energy.detail_over" : "energy.detail", {
+      mj: num(spent / 1e6, 2),
+      budget: num(budget / 1e6, 2),
+    }),
+  };
+}
+
+function safeDetail(plan, status) {
+  if (plan.baseSafe === "no") {
+    return t("safe.detail.short", {
+      arr: duration(plan.tl.tArr / 60),
+      margin: num(cfg.return_margin * 100, 0),
+    });
+  }
+  if (status === "no") return t("safe.detail.late");
+
+  const dest = plan.goal === cheyava ? t("label.cheyava") : t("dest.the");
+  const toMinutes = (seconds) => Math.floor(seconds / 60);
+  return t("safe.detail.ok", {
+    arr: duration(plan.tl.tArr / 60),
+    site: duration(toMinutes(plan.turn.siteS)),
+    dest,
+    back: duration(toMinutes(plan.turn.turnS)),
+  });
+}
+
+function stormDetail(detail) {
+  const hazard = state.env?.hazard;
+  if (!hazard) return detail;
+  const line = t("clock.hz.line", { tau: num(hazard.tau, 1), wind: num(hazard.wind_ms, 0) });
+  return [`${line}.`, hazard.label ? shown(hazard.label) : "", detail].filter(Boolean).join(" ");
+}
 
 function renderPanels() {
-  const pl = state.plan, st = pl.stats, p = $("safe"), B = cfg?.eva_energy_budget_j, s = pl.safe ?? "pending", spent = pl.at?.spent ?? 0;
-  p.dataset.tone = { ok: "safe", pending: "pending" }[s] ?? "danger";
-  const [glyph, sym] = s === "ok" ? ["g-return", "s-return"] : s === "pending" ? [null, null] : ["g-prohibit", "s-forbidden"];
-  setUse($("safe-t").querySelector("svg"), glyph); setUse(p.querySelector(".symbol svg"), sym);
-  $("safe-title").textContent = t(`safe.title.${s}`);
-  let value = "—", detail = "", rv = "—", rd = "", ev = "—", ed = "", over = false;
-  if (cfg && (s === "ok" || s === "no")) {
-    value = t(s === "ok" ? "safe.value.yes" : "safe.value.no");
-    const dest = pl.goal === cheyava ? t("label.cheyava") : t("dest.the"), mins = (sec) => Math.floor(sec / 60);
-    detail = pl.baseSafe === "no" ? t("safe.detail.short", { arr: duration(pl.tl.tArr / 60), margin: num(cfg.return_margin * 100, 0) })
-      : s === "no" ? t("safe.detail.late")
-      : t("safe.detail.ok", { arr: duration(pl.tl.tArr / 60), site: duration(mins(pl.turn.siteS)), dest, back: duration(mins(pl.turn.turnS)) });
-    rv = t("route.value", { km: num(st.lengthM / 1000, 2) });
-    rd = routeDetail(pl, st);
-    over = spent > B;
-    ev = t("energy.value", { pct: num((100 * spent) / B, 0) });
-    ed = t(over ? "energy.detail_over" : "energy.detail", { mj: num(spent / 1e6, 2), budget: num(B / 1e6, 2) });
-  } else if (s === "storm") {
-    value = t("safe.value.no"); detail = t("safe.detail.storm", { min: pl.homeMin == null ? "—" : duration(pl.homeMin) });
-    if (st) { rv = t("route.value", { km: num(st.lengthM / 1000, 2) }); rd = routeDetail(pl, st); ev = t("energy.value", { pct: num((100 * spent) / B, 0) }); ed = t("energy.detail", { mj: num(spent / 1e6, 2), budget: num(B / 1e6, 2) }); }
-  } else if (s === "forbidden") { detail = forbiddenText(pl); rd = t("route.none"); }
-  else if (s === "unreachable") { detail = t("safe.detail.unreachable"); rd = t("route.none"); }
-  const hz = state.env?.hazard, stormTag = $("safe-tag");
-  if (s === "storm" && hz) detail = [t("clock.hz.line", { tau: num(hz.tau, 1), wind: num(hz.wind_ms, 0) }) + ".", hz.label ? shown(hz.label) : "", detail].filter(Boolean).join(" ");
-  stormTag.innerHTML = s === "storm" && hz ? tag(hz.tag) : "";
-  p.setAttribute("role", s === "storm" ? "alert" : "status");
-  $("safe-value").textContent = value; $("safe-detail").textContent = detail;
-  $("route-value").textContent = rv; $("route-detail").textContent = rd;
-  if (ev === "—" && !ed) ed = t(s === "pending" ? "energy.pending" : "energy.none");
-  $("energy-value").textContent = ev; $("energy-detail").textContent = ed;
+  const plan = state.plan;
+  const stats = plan.stats;
+  const panel = $("safe");
+  const budget = cfg?.eva_energy_budget_j;
+  const status = plan.safe ?? "pending";
+  const spent = plan.at?.spent ?? 0;
+
+  panel.dataset.tone = { ok: "safe", pending: "pending" }[status] ?? "danger";
+  let glyph = "g-prohibit";
+  let symbol = "s-forbidden";
+  if (status === "ok") {
+    glyph = "g-return";
+    symbol = "s-return";
+  } else if (status === "pending") {
+    glyph = null;
+    symbol = null;
+  }
+  setUse($("safe-t").querySelector("svg"), glyph);
+  setUse(panel.querySelector(".symbol svg"), symbol);
+  $("safe-title").textContent = t(`safe.title.${status}`);
+
+  let value = "—";
+  let detail = "";
+  let routeValue = "—";
+  let routeText = "";
+  let energyValue = "—";
+  let energyText = "";
+  let over = false;
+  const routeValueOf = () => t("route.value", { km: num(stats.lengthM / 1000, 2) });
+
+  if (cfg && (status === "ok" || status === "no")) {
+    value = t(status === "ok" ? "safe.value.yes" : "safe.value.no");
+    detail = safeDetail(plan, status);
+    routeValue = routeValueOf();
+    routeText = routeDetail(plan, stats);
+    over = spent > budget;
+    const energy = energyTexts(spent, budget, over);
+    energyValue = energy.value;
+    energyText = energy.detail;
+  } else if (status === "storm") {
+    value = t("safe.value.no");
+    const homeText = plan.homeMin == null ? "—" : duration(plan.homeMin);
+    detail = t("safe.detail.storm", { min: homeText });
+    if (stats) {
+      routeValue = routeValueOf();
+      routeText = routeDetail(plan, stats);
+      const energy = energyTexts(spent, budget, false);
+      energyValue = energy.value;
+      energyText = energy.detail;
+    }
+  } else if (status === "forbidden") {
+    detail = forbiddenText(plan);
+    routeText = t("route.none");
+  } else if (status === "unreachable") {
+    detail = t("safe.detail.unreachable");
+    routeText = t("route.none");
+  }
+
+  const hazard = state.env?.hazard;
+  const isStorm = status === "storm" && hazard;
+  if (isStorm) detail = stormDetail(detail);
+  $("safe-tag").innerHTML = isStorm ? tag(hazard.tag) : "";
+  panel.setAttribute("role", status === "storm" ? "alert" : "status");
+
+  $("safe-value").textContent = value;
+  $("safe-detail").textContent = detail;
+  $("route-value").textContent = routeValue;
+  $("route-detail").textContent = routeText;
+
+  if (energyValue === "—" && !energyText) {
+    energyText = t(status === "pending" ? "energy.pending" : "energy.none");
+  }
+  $("energy-value").textContent = energyValue;
+  $("energy-detail").textContent = energyText;
   $("energy-value").classList.toggle("over", over);
-  const ep = $("energy-t").closest(".z535"); ep.dataset.tone = over ? "danger" : "neutral"; setUse($("energy-t").querySelector("svg"), over ? "g-prohibit" : null);
-}
 
-const routeDetail = (pl, st) => t(pl.profile === "foot" || !PROFILES[pl.profile] ? "route.detail" : `layers.route.${pl.profile}`, { dur: duration(st.lengthM / speedOf(pl.profile) / 60), speed: num(speedOf(pl.profile), 1) });
-
-function forbiddenText(pl) {
-  const w = pl.forbidWhy, why = w?.reason;
-  if (pl.profile === "foot" && why === "slope") return t("safe.detail.forbidden", { max: num(cfg.max_slope_deg, 0) });
-  if (!w) return t("safe.detail.forbidden", { max: num(cfg.max_slope_deg, 0) });
-  if (!why) return t("layers.forbid.overlay");
-  return t(`layers.forbid.${why}`, { slope: num(w.slope, 1), max: num(why === "rough" ? w.lim.rough : w.lim.slope, why === "rough" ? 2 : 0), rough: num(w.rough ?? 0, 2) });
+  const energyPanel = $("energy-t").closest(".z535");
+  energyPanel.dataset.tone = over ? "danger" : "neutral";
+  setUse($("energy-t").querySelector("svg"), over ? "g-prohibit" : null);
 }
 
 function renderOutputs() {
-  for (const w of WEIGHTS) $(`w-${w}-out`).textContent = num($(`w-${w}`).value, 1);
-  const el = $("elapsed"), secs = state.plan.evaS ?? el.value * 60;
-  $("elapsed-out").textContent = duration(secs / 60);
-  el.setAttribute("aria-valuetext", duration(secs / 60));
+  for (const weight of WEIGHTS) {
+    $(`w-${weight}-out`).textContent = num($(`w-${weight}`).value, 1);
+  }
+  const elapsed = $("elapsed");
+  const seconds = state.plan.evaS ?? elapsed.value * 60;
+  $("elapsed-out").textContent = duration(seconds / 60);
+  elapsed.setAttribute("aria-valuetext", duration(seconds / 60));
 }
 
 function renderFollow() {
-  const ck = state.clock, before = state.ui.follow && ck?.utcMs != null && Number.isFinite(ck.ltst) && ck.ltst < state.doc.settings.evaStartLtst, n = $("eva-start");
-  n.hidden = !before; if (before) n.textContent = t("eva.starts", { ltst: hhmm(state.doc.settings.evaStartLtst) });
+  const clock = state.clock;
+  const clockReady = clock?.utcMs != null && Number.isFinite(clock.ltst);
+  const startLtst = state.doc.settings.evaStartLtst;
+  const beforeStart = state.ui.follow && clockReady && clock.ltst < startLtst;
+  const startNote = $("eva-start");
+  startNote.hidden = !beforeStart;
+  if (beforeStart) startNote.textContent = t("eva.starts", { ltst: hhmm(startLtst) });
   $("eva-follow").hidden = state.ui.follow;
 }
 
 function donkiLine() {
-  const ts = (d.donki ?? []).map((e) => Date.parse(e.arrivalTime)).filter(Number.isFinite);
-  if (!ts.length) return "";
-  const f = (ms) => date(new Date(ms).toISOString(), { day: "numeric", month: "short" });
-  return t("spe.donki", { n: ts.length, first: f(Math.min(...ts)), last: f(Math.max(...ts)) });
+  const arrivals = (data.donki ?? [])
+    .map((event) => Date.parse(event.arrivalTime))
+    .filter(Number.isFinite);
+  if (!arrivals.length) return "";
+  const format = (ms) => date(new Date(ms).toISOString(), { day: "numeric", month: "short" });
+  return t("spe.donki", {
+    n: arrivals.length,
+    first: format(Math.min(...arrivals)),
+    last: format(Math.max(...arrivals)),
+  });
 }
+
 function radLine() {
-  const r = cfg?.radiation;
-  return r ? t("spe.rad", { date: date(r.event_date ?? r.rad_event_date), uGy: num(r.event_dose_uGy ?? r.rad_event_uGy, 0), xr: num(r.event_equiv_chest_xrays ?? r.chest_xray_equiv, 0) }) : "";
+  const radiation = cfg?.radiation;
+  if (!radiation) return "";
+  return t("spe.rad", {
+    date: date(radiation.event_date ?? radiation.rad_event_date),
+    uGy: num(radiation.event_dose_uGy ?? radiation.rad_event_uGy, 0),
+    xr: num(radiation.event_equiv_chest_xrays ?? radiation.chest_xray_equiv, 0),
+  });
 }
+
+function speLine(className, text) {
+  if (!text) return null;
+  const paragraph = document.createElement("p");
+  paragraph.className = className;
+  paragraph.textContent = text;
+  return paragraph;
+}
+
 function renderSpe() {
-  const s = spe, b = $("spe"), box = $("spe-body");
-  b.setAttribute("aria-pressed", String(!!s));
-  $("spe-label").textContent = t(s ? "spe.button_active" : "spe.button");
-  $("spe-panel").hidden = !s;
-  for (const li of document.querySelectorAll("[data-only=spe]")) li.hidden = !(s?.path.length > 1);
-  for (const li of document.querySelectorAll("[data-only=refuge]")) li.hidden = !(s && s.refuge !== habitat);
-  if (!s) return box.replaceChildren();
-  const line = (cls, text) => { if (!text) return null; const p = document.createElement("p"); p.className = cls; p.textContent = text; return p; };
-  const act = { home: "spe.at_home", here: "spe.here", go_home: "spe.go_home", shelter: "spe.go_shelter" }[s.kind];
-  box.replaceChildren(...(s.kind === "home" ? [line("spe-act long", state.plan.route?.length ? t(act) : t(act).split(". ")[0] + ".")]
-    : [line("spe-act", t(act, { min: num(s.min, 0) })), line("spe-line sky", t("spe.sky", { pct: num(s.sky, 0) })), line("spe-line", donkiLine()), line("spe-line", radLine())]).filter(Boolean));
+  const body = $("spe-body");
+  $("spe").setAttribute("aria-pressed", String(!!spe));
+  $("spe-label").textContent = t(spe ? "spe.button_active" : "spe.button");
+  $("spe-panel").hidden = !spe;
+  for (const item of document.querySelectorAll("[data-only=spe]")) {
+    item.hidden = !(spe?.path.length > 1);
+  }
+  for (const item of document.querySelectorAll("[data-only=refuge]")) {
+    item.hidden = !(spe && spe.refuge !== habitat);
+  }
+  if (!spe) return body.replaceChildren();
+
+  const actKey = {
+    home: "spe.at_home",
+    here: "spe.here",
+    go_home: "spe.go_home",
+    shelter: "spe.go_shelter",
+  }[spe.kind];
+
+  let lines;
+  if (spe.kind === "home") {
+    const text = state.plan.route?.length ? t(actKey) : `${t(actKey).split(". ")[0]}.`;
+    lines = [speLine("spe-act long", text)];
+  } else {
+    lines = [
+      speLine("spe-act", t(actKey, { min: num(spe.min, 0) })),
+      speLine("spe-line sky", t("spe.sky", { pct: num(spe.sky, 0) })),
+      speLine("spe-line", donkiLine()),
+      speLine("spe-line", radLine()),
+    ];
+  }
+  body.replaceChildren(...lines.filter(Boolean));
 }
 
 function renderScenario() {
-  const el = $("scenario"), meda = d.meda;
-  if (!meda) { el.textContent = t("scenario.fallback"); el.removeAttribute("title"); return; }
-  const { start_h: a, end_h: b } = meda.eva_window, hh = (v) => `${String(v).padStart(2, "0")}:00`;
-  const air = meda.t_air_c.slice(a, b).filter((v) => v != null);
-  const parts = [t("scenario.base", { sol: meda.sol, date: date(meda.date_utc) }), t("scenario.window", { start: hh(a), end: hh(b) })];
-  if (air.length) parts.push(t("scenario.air", { min: num(Math.min(...air), 0), max: num(Math.max(...air), 0) }));
-  el.textContent = parts.join(" · "); el.title = t("scenario.title");
+  const element = $("scenario");
+  const meda = data.meda;
+  if (!meda) {
+    element.textContent = t("scenario.fallback");
+    element.removeAttribute("title");
+    return;
+  }
+
+  const { start_h: startH, end_h: endH } = meda.eva_window;
+  const hourText = (hour) => `${String(hour).padStart(2, "0")}:00`;
+  const airTemps = meda.t_air_c.slice(startH, endH).filter((temp) => temp != null);
+  const parts = [
+    t("scenario.base", { sol: meda.sol, date: date(meda.date_utc) }),
+    t("scenario.window", { start: hourText(startH), end: hourText(endH) }),
+  ];
+  if (airTemps.length) {
+    parts.push(t("scenario.air", {
+      min: num(Math.min(...airTemps), 0),
+      max: num(Math.max(...airTemps), 0),
+    }));
+  }
+  element.textContent = parts.join(" · ");
+  element.title = t("scenario.title");
 }
 
 function renderAll() {
-  renderOutputs(); renderScenario(); renderPanels(); renderSpe(); renderFollow();
-  $("why").hidden = !d.science;
-  document.dispatchEvent(new CustomEvent("ariadne:render", { detail: { data: d, t, num, date, pick, getLang } }));
+  renderOutputs();
+  renderScenario();
+  renderPanels();
+  renderSpe();
+  renderFollow();
+  $("why").hidden = !data.science;
+  document.dispatchEvent(new CustomEvent("ariadne:render", {
+    detail: { data, t, num, date, pick, getLang },
+  }));
 }
 
 export function setGoal(cell) {
   submit({ t: "set", path: "settings.goal", v: cell === cheyava ? null : cell });
 }
+
 export const toggleSpe = simulateSpe;
 
-export async function init(c) {
-  ctx = c; d = c.data;
-  ({ rows, cols, cellM, layers, cfg, habitat, cheyava } = d);
-  planLayers = layers;
-  if (layers.viewshed_relay) planLayers = { ...layers, viewshed: layers.viewshed.map((v, i) => Math.max(v, layers.viewshed_relay[i])) };
-  const sv = Float32Array.from(layers.svf).sort();
-  refugeSvf = sv[Math.floor(sv.length * REFUGE_SVF_PERCENTILE)];
-  $("elapsed").max = cfg.eva_duration_h * 60;
+function bindWeightSliders() {
+  let timer = 0;
+  let lastSentAt = 0;
 
-  let timer = 0, lastSent = 0;
-  const weightsFromUi = () => Object.fromEntries(WEIGHTS.map((w) => [w, Number($(`w-${w}`).value)]));
-  const flushWeights = () => {
-    clearTimeout(timer); timer = 0;
-    const v = weightsFromUi(), j = JSON.stringify(v);
-    if (j === JSON.stringify(state.doc.settings.weights)) return;
-    lastSent = performance.now();
-    submit({ t: "set", path: "settings.weights", v });
+  const readWeights = () => {
+    return Object.fromEntries(WEIGHTS.map((weight) => [weight, Number($(`w-${weight}`).value)]));
   };
-  for (const w of WEIGHTS) {
-    $(`w-${w}`).addEventListener("input", () => { renderOutputs(); const wait = lastSent + 250 - performance.now(); if (wait <= 0) flushWeights(); else timer ||= setTimeout(flushWeights, wait); });
-    $(`w-${w}`).addEventListener("change", flushWeights);
+
+  const flushWeights = () => {
+    clearTimeout(timer);
+    timer = 0;
+    const weights = readWeights();
+    if (JSON.stringify(weights) === JSON.stringify(state.doc.settings.weights)) return;
+    lastSentAt = performance.now();
+    submit({ t: "set", path: "settings.weights", v: weights });
+  };
+
+  const onInput = () => {
+    renderOutputs();
+    const wait = lastSentAt + WEIGHT_SEND_INTERVAL_MS - performance.now();
+    if (wait <= 0) {
+      flushWeights();
+    } else if (!timer) {
+      timer = setTimeout(flushWeights, wait);
+    }
+  };
+
+  for (const weight of WEIGHTS) {
+    $(`w-${weight}`).addEventListener("input", onInput);
+    $(`w-${weight}`).addEventListener("change", flushWeights);
   }
-  $("elapsed").addEventListener("input", (e) => { manualS = e.target.value * 60; set("ui", { follow: false }); clearSpe(true); refresh(true); });
-  $("eva-follow").addEventListener("click", () => { set("ui", { follow: true }); refresh(true); });
+}
+
+function syncSliders() {
+  for (const weight of WEIGHTS) {
+    const value = state.doc.settings.weights[weight];
+    const slider = $(`w-${weight}`);
+    if (Number(slider.value) !== value) slider.value = value;
+  }
+}
+
+function bindControls() {
+  bindWeightSliders();
+  $("elapsed").addEventListener("input", (event) => {
+    manualS = event.target.value * 60;
+    set("ui", { follow: false });
+    clearSpe(true);
+    refresh(true);
+  });
+  $("eva-follow").addEventListener("click", () => {
+    set("ui", { follow: true });
+    refresh(true);
+  });
   $("reset-goal").addEventListener("click", () => setGoal(cheyava));
   $("spe").addEventListener("click", simulateSpe);
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && spe && e.target.tagName !== "SELECT") clearSpe(); });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && spe && event.target.tagName !== "SELECT") clearSpe();
+  });
+}
 
-  let seen = { doc: state.doc, goal: goalCell(), w: JSON.stringify(state.doc.settings.weights), start: state.doc.settings.evaStartLtst, profile: profileId(), follow: state.ui.follow };
-  const syncSliders = () => { for (const w of WEIGHTS) { const v = state.doc.settings.weights[w], el = $(`w-${w}`); if (Number(el.value) !== v) el.value = v; } };
+function bindStoreEvents() {
+  const seen = {
+    doc: state.doc,
+    goal: goalCell(),
+    w: JSON.stringify(state.doc.settings.weights),
+    start: state.doc.settings.evaStartLtst,
+    profile: profileId(),
+    follow: state.ui.follow,
+  };
+
   on("doc", (doc) => {
-    const prevDoc = seen.doc, goal = goalCell(), w = JSON.stringify(doc.settings.weights), overlayChanged = doc.log !== prevDoc.log || doc.locks !== prevDoc.locks;
-    const planChanged = goal !== seen.goal || w !== seen.w || overlayChanged;
-    seen = { ...seen, doc, goal, w };
+    const prevDoc = seen.doc;
+    const goal = goalCell();
+    const weights = JSON.stringify(doc.settings.weights);
+    const overlayChanged = doc.log !== prevDoc.log || doc.locks !== prevDoc.locks;
+    const planChanged = goal !== seen.goal || weights !== seen.w || overlayChanged;
+    seen.doc = doc;
+    seen.goal = goal;
+    seen.w = weights;
     syncSliders();
-    if (planChanged) recompute({ overlay: overlayChanged, prevDoc });
-    else if (doc.settings.evaStartLtst !== seen.start) { seen.start = doc.settings.evaStartLtst; refresh(); }
+    if (planChanged) {
+      recompute({ overlay: overlayChanged, prevDoc });
+    } else if (doc.settings.evaStartLtst !== seen.start) {
+      seen.start = doc.settings.evaStartLtst;
+      refresh();
+    }
   });
-  on("ui", () => {
-    const profile = profileId(), follow = state.ui.follow;
-    if (profile !== seen.profile) { seen.profile = profile; recompute(); }
-    else if (follow !== seen.follow) { seen.follow = follow; if (P.route) refresh(); }
-  });
-  on("clock", () => { if (state.ui.follow && P.route) refresh(); });
-  on("env", () => { if (P.route) refresh(); });
-  on("extra", () => { cache = { key: null }; baseEnergy = {}; penalty = {}; recompute(); });
-  on("lang", renderAll);
 
+  on("ui", () => {
+    const profile = profileId();
+    const follow = state.ui.follow;
+    if (profile !== seen.profile) {
+      seen.profile = profile;
+      recompute();
+    } else if (follow !== seen.follow) {
+      seen.follow = follow;
+      if (current.route) refresh();
+    }
+  });
+
+  on("clock", () => {
+    if (state.ui.follow && current.route) refresh();
+  });
+  on("env", () => {
+    if (current.route) refresh();
+  });
+  on("extra", () => {
+    footCache = { key: null };
+    baseEnergyCache = {};
+    penaltyCache = {};
+    recompute();
+  });
+  on("lang", renderAll);
+}
+
+export async function init(c) {
+  ctx = c;
+  data = c.data;
+  ({ rows, cols, cellM, layers, cfg, habitat, cheyava } = data);
+
+  planLayers = layers;
+  if (layers.viewshed_relay) {
+    const viewshed = layers.viewshed.map((v, i) => Math.max(v, layers.viewshed_relay[i]));
+    planLayers = { ...layers, viewshed };
+  }
+
+  const sortedSvf = Float32Array.from(layers.svf).sort();
+  refugeSvf = sortedSvf[Math.floor(sortedSvf.length * REFUGE_SVF_PERCENTILE)];
+  $("elapsed").max = cfg.eva_duration_h * 60;
+
+  bindControls();
+  bindStoreEvents();
   syncSliders();
   recompute();
   renderAll();
