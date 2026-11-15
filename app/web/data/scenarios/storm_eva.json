@@ -1,0 +1,25 @@
+{
+  "id": "storm_eva",
+  "name_en": "EVA-3 · dust-storm drill",
+  "name_es": "EVA-3 · simulacro de tormenta de polvo",
+  "tag": "SIMULATED",
+  "start": { "clock": { "mode": "replay", "replaySol": 1210, "ltst": 11.0, "rate": 60 } },
+  "assets": [
+    { "id": "supply1", "kind": "supply", "name": "Supply cache", "cell": [146, 326] },
+    { "id": "drill", "kind": "equipment", "name": "Core drill", "cell": [150, 331] }
+  ],
+  "actors": [
+    { "id": "sim-EV2", "crew": "EV2", "kind": "astronaut", "path": { "traverse": [100, 700] }, "speed_ms": 0.8 },
+    { "id": "sim-ROVER", "crew": "ROVER-1", "kind": "vehicle", "path": [[165, 315], [165, 345], [158, 348], [158, 330], [162, 318], [165, 315]], "speed_ms": 2.0, "loop": true }
+  ],
+  "events": [
+    { "at": 11.33, "do": "log", "as": "sim-EV2", "entry": { "section": "fault", "severity": 3, "cell": [81, 183], "radius_m": 60, "title": "Fresh scarp, loose blocks", "data": { "kind": "scarp" } } },
+    { "at": 11.67, "do": "lock", "as": "sim-ROVER", "lock": { "kind": "equipment", "target": "equip:drill", "reason": "Drilling", "sticky": true } },
+    { "at": 11.8, "do": "weather", "override": { "tau": [0.45, 0.6], "wind_ms": [4, 9], "wind_dir_deg": 250, "over_h": 0.5, "cell": [90, 140], "radius_m": 3000, "label": "Afternoon wind" } },
+    { "at": 12.5, "do": "weather", "override": { "tau": [0.6, 3.0], "wind_ms": [6, 22], "wind_dir_deg": 250, "over_h": 1.5, "cell": [90, 140], "radius_m": 1500, "label": "Regional dust storm" } },
+    { "at": 13.0, "do": "log", "as": "sim-EV2", "entry": { "section": "env_change", "severity": 2, "cell": [90, 150], "radius_m": 200, "title": "Dust rising, visibility down", "data": { "what": "dust_rise" } } },
+    { "at": 15.0, "do": "weather", "override": { "tau": [3.0, 0.7], "wind_ms": [22, 6], "wind_dir_deg": 250, "over_h": 0.5, "cell": [90, 140], "radius_m": 1500, "label": "Storm subsiding" } },
+    { "at": 15.5, "do": "resolve", "ref": 0 },
+    { "at": 15.6, "do": "release", "target": "equip:drill" }
+  ]
+}

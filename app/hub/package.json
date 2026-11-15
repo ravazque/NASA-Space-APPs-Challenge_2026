@@ -1,0 +1,10 @@
+{
+  "name": "ariadne-hub",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ARIADNE LAN hub: serves app/web and is the single WebSocket authority (ordered ops, leased locks, log).",
+  "scripts": { "start": "node server.mjs", "test": "node --test" },
+  "engines": { "node": ">=20" },
+  "dependencies": { "qrcode-terminal": "0.12.0", "ws": "8.18.3" }
+}

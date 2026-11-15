@@ -13,9 +13,10 @@
   },
   {
    "id": "dtm",
-   "what": "Elevation, slope, sky view factor and viewsheds derived from the HiRISE 1 m DTM",
+   "what": "Elevation, slope, sky view factor, viewsheds, roughness, a large-rock proxy and closed depressions derived from the HiRISE 1 m DTM",
    "files": [
-    "jezero_cost_grid.json: elevation_m, slope_deg, svf, viewshed, viewshed_relay"
+    "jezero_cost_grid.json: elevation_m, slope_deg, svf, viewshed, viewshed_relay",
+    "terrain_extra.json: rough_m, rocks (proxy), craters (closed depressions)"
    ],
    "credit": "NASA/JPL-Caltech/USGS Astrogeology Science Center (Fergason et al. 2020, Mars 2020 TRN HiRISE DTM mosaic)",
    "url": "https://doi.org/10.5066/P9REJ9JN",

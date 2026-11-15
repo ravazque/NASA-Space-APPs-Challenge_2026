@@ -1,0 +1,25 @@
+{
+  "R_co2": 188.9,
+  "R_note": "J/(kg·K), pure CO2 (8.314/0.04401). Mars air (~95 % CO2) is ~191: density is ~1 % high.",
+  "rad": {
+    "gcr_uGy_day": 210, "sd": 40,
+    "site": "Gale crater (Curiosity RAD), not Jezero",
+    "src": "Hassler et al. 2014, Science 343, 1244797, doi:10.1126/science.1244797 (0.210 ± 0.040 mGy/day; value not re-checked against the paper, the abstract does not state it)"
+  },
+  "uv": {
+    "S_uv_1AU_Wm2": 110, "band": "200–400 nm",
+    "note": "≈8 % of 1361 W/m² (ASTM E-490 AM0); approximate, not re-checked"
+  },
+  "tau": {
+    "aphelion": 0.45, "peak": 0.9, "peak_ls": 250, "width_ls": 45,
+    "note": "ARIADNE seasonal curve shaped on Jezero values (~0.4–0.6 around aphelion, higher in dust season); MODEL"
+  },
+  "hazard": {
+    "caution": { "tau": 1.0, "dtau_h": 0.25, "wind_ms": 12 },
+    "danger": { "tau": 2.0, "dtau_h": 0.5, "wind_ms": 18 },
+    "note": "ARIADNE operational thresholds, not NASA rules"
+  },
+  "wind_model": { "base_ms": 3, "amp_ms": 4, "note": "3 + 4·max(0, sin(π·(LTST − 9)/8)) m/s: daytime convection, calm nights. MODEL where MEDA has no wind (sensor damaged early in the mission)." },
+  "storm_ref": "MY34 global storm: τ ≈ 8.5 at Gale (Guzewich et al. 2019, doi:10.1029/2018GL080839)",
+  "climatology_window_ls": 30
+}

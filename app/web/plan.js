@@ -3,7 +3,7 @@ import { t, num, date, pick, getLang } from "./i18n.js";
 import { $ } from "./ui.js";
 import { submit } from "./sync.js";
 import { planningGrid, dijkstra, shortestPath, pathStats, evaTimeline, stateAt, turnaround, walkbackMask } from "./pathfind.js";
-import { PROFILES, passMask, routeEnergy, planPenalty } from "./profiles.js";
+import { PROFILES, passMask, routeEnergy, planPenalty, blockReason, limits } from "./profiles.js";
 import { overlay, entryCells, lockCells } from "./effects.js";
 import { SOL_S } from "./marsclock.js";
 
@@ -13,7 +13,7 @@ const MARS_HOUR_S = SOL_S / 24;
 
 let ctx, d, rows, cols, cellM, cfg, layers, planLayers, habitat, cheyava, refugeSvf;
 let spe = null, speFrom = -1, lastGoal = -1, manualS = 0;
-let cache = { key: null }, routeCache = { key: null }, baseEnergy = {}, forbidPrev = null;
+let cache = { key: null }, routeCache = { key: null }, baseEnergy = {}, penalty = {}, forbidPrev = null;
 
 const goalCell = () => { const g = state.doc.settings.goal; return Number.isInteger(g) && g >= 0 && g < rows * cols ? g : cheyava; };
 const profileId = () => (PROFILES[state.ui.profile] ? state.ui.profile : "foot");
@@ -29,6 +29,7 @@ function base(profile) {
   for (let i = 0; i < e.length; i++) if (!pass[i]) e[i] = Infinity;
   return (baseEnergy[key] = e);
 }
+const penaltyOf = (profile) => (profile in penalty ? penalty[profile] : (penalty[profile] = planPenalty(profile, layers, ctx.extra ?? null)));
 function withBlocks(b, mult) {
   let out = b;
   for (let i = 0; i < mult.length; i++) if (mult[i] === Infinity && b[i] !== Infinity) { if (out === b) out = Float32Array.from(b); out[i] = Infinity; }
@@ -50,18 +51,19 @@ function recompute(flags = {}) {
   const f = footGrids();
   let eRoute = f.eFoot, mult = f.mult;
   if (profile !== "foot") { const o = ovl(profile); eRoute = withBlocks(base(profile), o.mult); mult = o.mult; }
-  const pg = planningGrid(eRoute, planLayers, W), pen = planPenalty(profile, layers, ctx.extra ?? null);
+  const pg = planningGrid(eRoute, planLayers, W), pen = penaltyOf(profile);
   for (let i = 0; i < pg.length; i++) if (pg[i] !== Infinity) pg[i] *= mult[i] * (pen ? pen[i] : 1);
   const route = shortestPath(pg, rows, cols, habitat, goal);
   const stats = route.length ? pathStats(route, eRoute, cols, cellM) : null;
   const tl = evaTimeline(route, eRoute, cols, cellM, { ...cfg, walk_speed_ms: speedOf(profile) });
   const turn = turnaround(tl, f.home.dist[goal], cfg);
   const baseSafe = !route.length ? (eRoute[goal] === Infinity ? "forbidden" : "unreachable") : turn.siteS >= 0 ? "ok" : "no";
+  const forbidWhy = baseSafe === "forbidden" ? { reason: blockReason(profile, goal, layers, ctx.extra ?? null, cfg), slope: layers.slope_deg[goal], rough: ctx.extra?.rough_m[goal], lim: limits(profile, ctx.extra ?? null, cfg) } : null;
   const forbid = Uint8Array.from(eRoute, (v) => (v === Infinity ? 1 : 0));
   const same = forbidPrev && forbidPrev.every((v, i) => v === forbid[i]);
   if (!same) forbidPrev = forbid;
   const reroute = flags.overlay && prev.route?.length ? detectReroute(prev, route, stats, mult, flags.prevDoc) : null;
-  P = { profile, goal, route, stats, tl, turn, baseSafe, mult, eFoot: f.eFoot, forbid: forbidPrev, reroute, habitat, cheyava };
+  P = { profile, goal, route, stats, tl, turn, baseSafe, forbidWhy, mult, eFoot: f.eFoot, forbid: forbidPrev, reroute, habitat, cheyava };
   if (goal !== lastGoal) { lastGoal = goal; if (!state.ui.follow) set("ui", { follow: true }); }
   clearSpe(true);
   refresh(true);
@@ -142,20 +144,30 @@ function renderPanels() {
       : s === "no" ? t("safe.detail.late")
       : t("safe.detail.ok", { arr: duration(pl.tl.tArr / 60), site: duration(mins(pl.turn.siteS)), dest, back: duration(mins(pl.turn.turnS)) });
     rv = t("route.value", { km: num(st.lengthM / 1000, 2) });
-    rd = t("route.detail", { dur: duration(st.lengthM / speedOf(pl.profile) / 60), speed: num(speedOf(pl.profile), 1) });
+    rd = routeDetail(pl, st);
     over = spent > B;
     ev = t("energy.value", { pct: num((100 * spent) / B, 0) });
     ed = t(over ? "energy.detail_over" : "energy.detail", { mj: num(spent / 1e6, 2), budget: num(B / 1e6, 2) });
   } else if (s === "storm") {
     value = t("safe.value.no"); detail = t("safe.detail.storm", { min: pl.homeMin == null ? "—" : duration(pl.homeMin) });
-    if (st) { rv = t("route.value", { km: num(st.lengthM / 1000, 2) }); rd = t("route.detail", { dur: duration(st.lengthM / speedOf(pl.profile) / 60), speed: num(speedOf(pl.profile), 1) }); }
-  } else if (s === "forbidden") { detail = t("safe.detail.forbidden", { max: num(cfg.max_slope_deg, 0) }); rd = t("route.none"); }
+    if (st) { rv = t("route.value", { km: num(st.lengthM / 1000, 2) }); rd = routeDetail(pl, st); }
+  } else if (s === "forbidden") { detail = forbiddenText(pl); rd = t("route.none"); }
   else if (s === "unreachable") { detail = t("safe.detail.unreachable"); rd = t("route.none"); }
   $("safe-value").textContent = value; $("safe-detail").textContent = detail;
   $("route-value").textContent = rv; $("route-detail").textContent = rd;
   $("energy-value").textContent = ev; $("energy-detail").textContent = ed;
   $("energy-value").classList.toggle("over", over);
   const ep = $("energy-t").closest(".z535"); ep.dataset.tone = over ? "danger" : "neutral"; setUse($("energy-t").querySelector("svg"), over ? "g-prohibit" : null);
+}
+
+const routeDetail = (pl, st) => t(pl.profile === "foot" || !PROFILES[pl.profile] ? "route.detail" : `layers.route.${pl.profile}`, { dur: duration(st.lengthM / speedOf(pl.profile) / 60), speed: num(speedOf(pl.profile), 1) });
+
+function forbiddenText(pl) {
+  const w = pl.forbidWhy, why = w?.reason;
+  if (pl.profile === "foot" && why === "slope") return t("safe.detail.forbidden", { max: num(cfg.max_slope_deg, 0) });
+  if (!w) return t("safe.detail.forbidden", { max: num(cfg.max_slope_deg, 0) });
+  if (!why) return t("layers.forbid.overlay");
+  return t(`layers.forbid.${why}`, { slope: num(w.slope, 1), max: num(why === "rough" ? w.lim.rough : w.lim.slope, why === "rough" ? 2 : 0), rough: num(w.rough ?? 0, 2) });
 }
 
 function renderOutputs() {
@@ -252,7 +264,7 @@ export async function init(c) {
   });
   on("clock", () => { if (state.ui.follow && P.route) refresh(); });
   on("env", () => { if (P.route) refresh(); });
-  on("extra", () => { cache = { key: null }; baseEnergy = {}; recompute(); });
+  on("extra", () => { cache = { key: null }; baseEnergy = {}; penalty = {}; recompute(); });
   on("lang", renderAll);
 
   syncSliders();

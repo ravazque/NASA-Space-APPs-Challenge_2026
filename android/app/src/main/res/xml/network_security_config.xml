@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Closed field LAN: the hub is a raw private IP (192.168.x.x, 10.x.x.x, 172.16-31.x.x) and
+         domain rules cannot match IPs, so cleartext (http/ws) is allowed app-wide. The app only
+         talks to its own bundled files and to the hub the user types in. -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
