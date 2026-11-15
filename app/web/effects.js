@@ -1,64 +1,147 @@
 export const SOL_MS = 88775244;
-const BASE_X = 3, CAUTION_X = 3, ENV_X = 2, ROUTE_LOCK_X = 4;
-let G = null, S = new Set();
+
+const BASE_FACTOR = 3;
+const CAUTION_FACTOR = 3;
+const ENV_FACTOR = 2;
+const ROUTE_LOCK_FACTOR = 4;
+const MAX_RADIUS_M = 200;
+const DEFAULT_RADIUS_M = 40;
+const ROUTING_SECTIONS = ["fault", "hazard", "env_change"];
+
+let lastGrid = null;
+let lastSuperseded = new Set();
 
 const inRange = (i, n) => Number.isInteger(i) && i >= 0 && i < n;
-const appliesTo = (o, profile) => !Array.isArray(o.profiles) || !o.profiles.length || o.profiles.includes(profile);
 
-function circle(cell, r_m, { rows, cols, cellM }) {
-  const cr = (cell / cols) | 0, cc = cell % cols, n = Math.ceil(r_m / cellM), out = [];
-  for (let r = Math.max(0, cr - n); r <= Math.min(rows - 1, cr + n); r++) for (let k = Math.max(0, cc - n); k <= Math.min(cols - 1, cc + n); k++) {
-    if (Math.hypot(r - cr, k - cc) * cellM <= r_m) out.push(r * cols + k);
-  }
-  return out;
+function appliesTo(item, profile) {
+  if (!Array.isArray(item.profiles) || !item.profiles.length) return true;
+  return item.profiles.includes(profile);
 }
+
+function entryRadius(entry) {
+  return Math.min(MAX_RADIUS_M, Math.max(0, entry.radius_m ?? DEFAULT_RADIUS_M));
+}
+
+function circle(cell, radiusM, { rows, cols, cellM }) {
+  const centerRow = (cell / cols) | 0;
+  const centerCol = cell % cols;
+  const reach = Math.ceil(radiusM / cellM);
+  const rowMin = Math.max(0, centerRow - reach);
+  const rowMax = Math.min(rows - 1, centerRow + reach);
+  const colMin = Math.max(0, centerCol - reach);
+  const colMax = Math.min(cols - 1, centerCol + reach);
+  const inside = [];
+
+  for (let row = rowMin; row <= rowMax; row++) {
+    for (let col = colMin; col <= colMax; col++) {
+      if (Math.hypot(row - centerRow, col - centerCol) * cellM <= radiusM) {
+        inside.push(row * cols + col);
+      }
+    }
+  }
+  return inside;
+}
+
 function withBuffer(cells, { rows, cols }) {
-  const s = new Set();
-  for (const c of cells) {
-    if (!inRange(c, rows * cols)) continue;
-    const r = (c / cols) | 0, k = c % cols;
-    for (let a = Math.max(0, r - 1); a <= Math.min(rows - 1, r + 1); a++) for (let b = Math.max(0, k - 1); b <= Math.min(cols - 1, k + 1); b++) s.add(a * cols + b);
+  const buffered = new Set();
+  for (const cell of cells) {
+    if (!inRange(cell, rows * cols)) continue;
+    const row = (cell / cols) | 0;
+    const col = cell % cols;
+    for (let r = Math.max(0, row - 1); r <= Math.min(rows - 1, row + 1); r++) {
+      for (let c = Math.max(0, col - 1); c <= Math.min(cols - 1, col + 1); c++) {
+        buffered.add(r * cols + c);
+      }
+    }
   }
-  return [...s];
+  return [...buffered];
 }
 
-export const supersededIds = (entries) => new Set(entries.map((e) => e?.data?.supersedes).filter(Boolean));
+export function supersededIds(entries) {
+  return new Set(entries.map((entry) => entry?.data?.supersedes).filter(Boolean));
+}
 
-export function entryFactor(e, nowUtcMs) {
-  if (!e || e.status === "resolved") return 1;
-  const sev = e.severity;
-  if (e.section === "fault" || e.section === "hazard") return sev >= 3 ? Infinity : sev === 2 ? CAUTION_X : 1;
-  if (e.section === "env_change") return sev >= 2 && nowUtcMs - e.utcMs < SOL_MS ? ENV_X : 1;
+export function entryFactor(entry, nowUtcMs) {
+  if (!entry || entry.status === "resolved") return 1;
+  const severity = entry.severity;
+
+  if (entry.section === "fault" || entry.section === "hazard") {
+    if (severity >= 3) return Infinity;
+    return severity === 2 ? CAUTION_FACTOR : 1;
+  }
+  if (entry.section === "env_change") {
+    const isRecent = nowUtcMs - entry.utcMs < SOL_MS;
+    return severity >= 2 && isRecent ? ENV_FACTOR : 1;
+  }
   return 1;
 }
 
-export function overlay({ entries = [], locks = [], me, profile, rows, cols, cellM, nowUtcMs = Date.now(), protect = [] }) {
-  const dims = (G = { rows, cols, cellM }), n = rows * cols, mult = new Float32Array(n).fill(1);
-  const bump = (cells, v) => { for (const i of cells) if (inRange(i, n) && v > mult[i]) mult[i] = v; };
-  const sup = (S = supersededIds(entries));
-  for (const e of entries) {
-    if (!e || sup.has(e.id) || !appliesTo(e, profile) || !inRange(e.cell, n)) continue;
-    const v = entryFactor(e, nowUtcMs);
-    if (v > 1) bump(circle(e.cell, Math.min(200, Math.max(0, e.radius_m ?? 40)), dims), v);
+export function overlay({
+  entries = [],
+  locks = [],
+  me,
+  profile,
+  rows,
+  cols,
+  cellM,
+  nowUtcMs = Date.now(),
+  protect = [],
+}) {
+  const grid = { rows, cols, cellM };
+  const size = rows * cols;
+  const mult = new Float32Array(size).fill(1);
+  lastGrid = grid;
+
+  const raise = (cells, factor) => {
+    for (const i of cells) {
+      if (inRange(i, size) && factor > mult[i]) mult[i] = factor;
+    }
+  };
+
+  const superseded = supersededIds(entries);
+  lastSuperseded = superseded;
+
+  for (const entry of entries) {
+    if (!entry || superseded.has(entry.id)) continue;
+    if (!appliesTo(entry, profile) || !inRange(entry.cell, size)) continue;
+    const factor = entryFactor(entry, nowUtcMs);
+    if (factor > 1) raise(circle(entry.cell, entryRadius(entry), grid), factor);
   }
-  for (const l of locks) {
-    if (!l || l.holder?.deviceId === me?.deviceId || !appliesTo(l, profile)) continue;
-    if (l.kind === "zone") bump(l.cells ?? [], Infinity);
-    else if (l.kind === "route") bump(withBuffer(l.cells ?? [], dims), ROUTE_LOCK_X);
+
+  for (const lock of locks) {
+    if (!lock || lock.holder?.deviceId === me?.deviceId || !appliesTo(lock, profile)) continue;
+    if (lock.kind === "zone") {
+      raise(lock.cells ?? [], Infinity);
+    } else if (lock.kind === "route") {
+      raise(withBuffer(lock.cells ?? [], grid), ROUTE_LOCK_FACTOR);
+    }
   }
-  for (const c of protect) if (inRange(c, n) && mult[c] > BASE_X) mult[c] = BASE_X;
+
+  for (const cell of protect) {
+    if (inRange(cell, size) && mult[cell] > BASE_FACTOR) mult[cell] = BASE_FACTOR;
+  }
+
   let blocked = 0;
-  for (let i = 0; i < n; i++) if (mult[i] === Infinity) blocked++;
+  for (let i = 0; i < size; i++) {
+    if (mult[i] === Infinity) blocked++;
+  }
   return { mult, blocked };
 }
 
-export function entryCells(e) {
-  if (!G || !e || S.has(e.id) || e.status === "resolved" || !["fault", "hazard", "env_change"].includes(e.section) || e.severity < 2 || !inRange(e.cell, G.rows * G.cols)) return new Int32Array(0);
-  return Int32Array.from(circle(e.cell, Math.min(200, Math.max(0, e.radius_m ?? 40)), G));
+export function entryCells(entry) {
+  const none = new Int32Array(0);
+  if (!lastGrid || !entry || lastSuperseded.has(entry.id)) return none;
+  if (entry.status === "resolved" || !ROUTING_SECTIONS.includes(entry.section)) return none;
+  if (entry.severity < 2 || !inRange(entry.cell, lastGrid.rows * lastGrid.cols)) return none;
+  return Int32Array.from(circle(entry.cell, entryRadius(entry), lastGrid));
 }
-export function lockCells(l) {
-  if (!G || !l) return new Int32Array(0);
-  if (l.kind === "zone") return Int32Array.from((l.cells ?? []).filter((i) => inRange(i, G.rows * G.cols)));
-  if (l.kind === "route") return Int32Array.from(withBuffer(l.cells ?? [], G));
+
+export function lockCells(lock) {
+  if (!lastGrid || !lock) return new Int32Array(0);
+  if (lock.kind === "zone") {
+    const size = lastGrid.rows * lastGrid.cols;
+    return Int32Array.from((lock.cells ?? []).filter((i) => inRange(i, size)));
+  }
+  if (lock.kind === "route") return Int32Array.from(withBuffer(lock.cells ?? [], lastGrid));
   return new Int32Array(0);
 }
