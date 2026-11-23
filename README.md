@@ -1,11 +1,11 @@
 # ARIADNE
 
-### [Open the live demo](https://ravazque.github.io/NASA-2026/) · [Dust-storm demo](https://ravazque.github.io/NASA-2026/?sim=storm_eva) · [Download the Android APK](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/latest/download/ariadne-debug.apk)
+### [Open the live demo](https://ravazque.github.io/NASA-2026/?lang=en) · [Dust-storm demo](https://ravazque.github.io/NASA-2026/?sim=storm_eva&lang=en) · [Download the Android APK](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/latest/download/ariadne-debug.apk)
 
 Runs in the browser, nothing to install. [Versión en español](docs/README.md).
 
 [![CI](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/actions/workflows/android.yml/badge.svg)](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/actions/workflows/android.yml)
-[![Live demo](https://img.shields.io/badge/demo-GitHub%20Pages-1f6feb)](https://ravazque.github.io/NASA-2026/)
+[![Live demo](https://img.shields.io/badge/demo-GitHub%20Pages-1f6feb)](https://ravazque.github.io/NASA-2026/?lang=en)
 [![APK](https://img.shields.io/badge/Android-APK-3ddc84)](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/latest/download/ariadne-debug.apk)
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-lightgrey)](LICENSE)
 
@@ -21,8 +21,8 @@ Entry for NASA Space Apps 2026, *Mars Surface Exploration Map*. ARIADNE is not a
 
 | | |
 |---|---|
-| **Browser** | [Interactive demo](https://ravazque.github.io/NASA-2026/) (solo mode) |
-| **Dust-storm demo** | [Simulated crew, rover and dust storm](https://ravazque.github.io/NASA-2026/?sim=storm_eva) (speed up the clock at the top to reach the storm sooner) |
+| **Browser** | [Interactive demo](https://ravazque.github.io/NASA-2026/?lang=en) (solo mode) |
+| **Dust-storm demo** | [Simulated crew, rover and dust storm](https://ravazque.github.io/NASA-2026/?sim=storm_eva&lang=en) (speed up the clock at the top to reach the storm sooner) |
 | **Android** | [`ariadne-debug.apk`](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/latest/download/ariadne-debug.apk) from the latest release, or [`apk-latest`](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/tag/apk-latest) for the newest build of `main` |
 | **LAN, several devices** | `make up` on a laptop, then scan the QR it prints from phones on the same Wi-Fi |
 
