@@ -74,11 +74,13 @@ docs           Spanish README, screenshots and team logo
 Needs Node 20+ (and Python 3 for `make serve` or `make data`). `make help` lists everything:
 
 ```text
+make help          list the commands
 make up            install, test and start the hub (app + LAN sync + QR)   -> http://localhost:8090
 make hub           start the hub only (TOKEN=secret protects the Base role)
 make sim           hub + simulated crew, rover and dust storm (SIM=storm_eva)
 make serve         app only on :8000, solo mode, no sync
 make test          Node tests, about 15 s
+make android-sync  copy app/web into the Android project
 make apk           build the debug Android APK (JDK 21 + Android SDK)
 make data          rebuild data from NASA sources (needs network)
 make tiles         download the HiRISE tiles z13 to z17

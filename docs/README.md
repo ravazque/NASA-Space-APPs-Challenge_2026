@@ -74,11 +74,13 @@ docs           este README, capturas y logo del equipo
 Necesita Node 20+ (y Python 3 para `make serve` o `make data`). `make help` lo lista todo:
 
 ```text
+make help          lista los comandos
 make up            instala, pasa los tests y arranca el hub (app + sincronización + QR)   -> http://localhost:8090
 make hub           arranca solo el hub (TOKEN=secreto protege el rol Base)
 make sim           hub + tripulación, rover y tormenta de polvo simulados (SIM=storm_eva)
 make serve         solo la app en :8000, modo individual, sin sincronización
 make test          tests de Node, unos 15 s
+make android-sync  copia app/web al proyecto Android
 make apk           compila el APK de depuración para Android (JDK 21 + Android SDK)
 make data          regenera los datos desde las fuentes de la NASA (necesita red)
 make tiles         descarga las teselas HiRISE de z13 a z17
