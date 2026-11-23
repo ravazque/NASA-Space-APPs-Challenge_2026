@@ -1,15 +1,15 @@
 # ARIADNE
 
-### ▶ [Open the live demo](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/) · [Dust-storm demo](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/?sim=storm_eva) · [Download the Android APK](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/download/apk-latest/ariadne-debug.apk)
+### [Open the live demo](https://ravazque.github.io/NASA-2026/) · [Dust-storm demo](https://ravazque.github.io/NASA-2026/?sim=storm_eva) · [Download the Android APK](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/latest/download/ariadne-debug.apk)
 
-Runs in the browser, nothing to install. [Versión en español](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/?lang=es).
+Runs in the browser, nothing to install. [Versión en español](docs/README.md).
 
 [![CI](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/actions/workflows/android.yml/badge.svg)](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/actions/workflows/android.yml)
-[![Live demo](https://img.shields.io/badge/demo-GitHub%20Pages-1f6feb)](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/)
-[![APK](https://img.shields.io/badge/Android-APK-3ddc84)](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/download/apk-latest/ariadne-debug.apk)
+[![Live demo](https://img.shields.io/badge/demo-GitHub%20Pages-1f6feb)](https://ravazque.github.io/NASA-2026/)
+[![APK](https://img.shields.io/badge/Android-APK-3ddc84)](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/latest/download/ariadne-debug.apk)
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-lightgrey)](LICENSE)
 
-**EN** · [ES](#español)
+**EN** · [ES](docs/README.md)
 
 > An offline field network for a spacewalk on Mars: where do we walk, can we still get back, and what do we do if a dust storm arrives. Several devices, one shared plan, no internet.
 
@@ -21,9 +21,9 @@ Entry for NASA Space Apps 2026, *Mars Surface Exploration Map*. ARIADNE is not a
 
 | | |
 |---|---|
-| **Browser** | [Interactive demo](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/) (solo mode) |
-| **Dust-storm demo** | [Simulated crew, rover and dust storm](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/?sim=storm_eva) (speed up the clock at the top to reach the storm sooner) |
-| **Android** | [`ariadne-debug.apk`](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/download/apk-latest/ariadne-debug.apk), rebuilt by CI on every push to `main` |
+| **Browser** | [Interactive demo](https://ravazque.github.io/NASA-2026/) (solo mode) |
+| **Dust-storm demo** | [Simulated crew, rover and dust storm](https://ravazque.github.io/NASA-2026/?sim=storm_eva) (speed up the clock at the top to reach the storm sooner) |
+| **Android** | [`ariadne-debug.apk`](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/latest/download/ariadne-debug.apk) from the latest release, or [`apk-latest`](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/tag/apk-latest) for the newest build of `main` |
 | **LAN, several devices** | `make up` on a laptop, then scan the QR it prints from phones on the same Wi-Fi |
 
 ## Why
@@ -65,7 +65,7 @@ app/web        the app (HTML, CSS, ES modules, data, offline tiles)
 app/hub        LAN hub (Node 20, ws)
 app/pipeline   scripts that download and prepare the NASA data
 android        Capacitor Android project and icon generator
-docs           screenshots and team logo
+docs           Spanish README, screenshots and team logo
 .github        CI: tests, APK build and release, GitHub Pages
 ```
 
@@ -100,7 +100,7 @@ Without a hub, `?sim=storm_eva` runs the same scenario inside a single window.
 
 ### Android
 
-CI builds a debug APK on every push and publishes it on the **Releases** page as `apk-latest`. To build it locally, install JDK 21 and the Android command-line tools (`brew install openjdk@21 && brew install --cask android-commandlinetools` on macOS, `jdk21-openjdk` plus the Android Studio SDK on Linux) and run `make apk`. Install with `adb install -r android/app/build/outputs/apk/debug/app-debug.apk`, then tap the sync chip in the app and enter the hub's `ip:port`.
+CI builds a debug APK on every push and publishes the one from `main` on the **Releases** page as the `apk-latest` pre-release; pushing a `v*` tag publishes a versioned release with its own APK. To build it locally, install JDK 21 and the Android command-line tools (`brew install openjdk@21 && brew install --cask android-commandlinetools` on macOS, `jdk21-openjdk` plus the Android Studio SDK on Linux) and run `make apk`. Install with `adb install -r android/app/build/outputs/apk/debug/app-debug.apk`, then tap the sync chip in the app and enter the hub's `ip:port`.
 
 The launcher icon is the team logo (`docs/brand/ariadne-logo.jpeg`); after changing it, run `python3 android/make_icon.py` (Pillow + numpy) to regenerate the `mipmap-*` icons. The web view sits below the status bar and notch (`adjustMarginsForEdgeToEdge` in `capacitor.config.json`).
 
@@ -132,16 +132,3 @@ Raúl Vázquez Pérez ([@ravazque](https://github.com/ravazque)), [@NachoASD](ht
 
 MIT, see [`LICENSE`](LICENSE). Data and photos belong to their authors (credits in the app footer). Barlow typeface under SIL OFL 1.1, Leaflet 1.9.4 under BSD-2.
 
----
-
-## Español
-
-**ARIADNE** es una red de campo sin internet para un paseo espacial en Marte: por dónde caminar, si todavía podemos volver y qué hacer si llega una tormenta de polvo. Varios dispositivos comparten un mismo plan. Proyecto para el reto *Mars Surface Exploration Map* de NASA Space Apps 2026; no está afiliado ni respaldado por la NASA.
-
-- **Probarlo.** En el navegador: [demo en GitHub Pages](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/?lang=es) o [demo con tormenta de polvo simulada](https://ravazque.github.io/NASA-Space-APPs-Challenge_2026/?sim=storm_eva&lang=es). En Android: [descargar el APK](https://github.com/ravazque/NASA-Space-APPs-Challenge_2026/releases/download/apk-latest/ariadne-debug.apk). En red local: `make up` en un portátil y escanear el QR desde los móviles.
-- **Ruta.** Calcula la ruta de menor coste para un astronauta con traje a 0,38 g, evitando pendientes de más de 18°, arena suelta y rocas grandes, con un límite de retorno seguro que se reduce con el reloj de la EVA.
-- **Red de campo.** Un hub en la red local ordena las operaciones, gestiona bloqueos con arrendamiento y guarda un registro de campo compartido que recalcula la ruta de los demás. Si el hub cae, los dispositivos siguen funcionando y se ponen al día al volver.
-- **Entorno.** Reloj marciano Mars24 que reproduce un sol real medido por MEDA, 36 capas en 6 categorías y peligro de tormenta de polvo. Cada dato lleva su etiqueta de origen.
-- **Stack.** JavaScript con módulos ES sin framework ni bundler, Leaflet, hub en Node con WebSocket, pipeline de datos en Python y APK con Capacitor. Tests con `node:test` y CI en GitHub Actions.
-- **Comandos.** `make help` los lista todos; `make sim` simula tripulación, rover y tormenta con un solo portátil; `make test` pasa los tests; `make apk` compila el APK.
-- **Equipo.** Raúl Vázquez Pérez (@ravazque), @NachoASD, @ccheerry, @ptrapero y @RaulMkn. Licencia MIT.
